@@ -1,0 +1,22 @@
+{
+  "name": "GymApp - Tu Entrenador Personal",
+  "short_name": "GymApp",
+  "description": "Aplicación de entrenamiento personalizado con IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0E0F0C",
+  "theme_color": "#D4FF3D",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

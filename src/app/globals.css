@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — "The Charged Set" (ver DESIGN.md)
+ * :root = tema claro (bone). .dark = tema oscuro (ink), hogar natural de la marca.
+ * Valores en HSL sin la función hsl() envolvente, por convención de shadcn/ui.
+ */
+:root {
+  --background: 60 44% 96%;      /* bone-50 */
+  --foreground: 70 17% 7%;       /* bone-text */
+  --card: 60 100% 99%;           /* bone-card */
+  --card-foreground: 70 17% 7%;  /* bone-text */
+  --popover: 60 100% 99%;        /* bone-card */
+  --popover-foreground: 70 17% 7%;
+
+  --primary: 73 100% 62%;        /* volt */
+  --primary-foreground: 80 11% 5%; /* ink-950 — nunca texto blanco sobre volt */
+
+  --secondary: 60 21% 87%;       /* bone-border */
+  --secondary-foreground: 70 17% 7%;
+
+  --muted: 60 21% 87%;           /* bone-border */
+  --muted-foreground: 70 9% 40%; /* bone-muted */
+
+  --accent: 73 60% 92%;          /* volt, muy tenue — solo para hover/selección sutil */
+  --accent-foreground: 70 17% 7%;
+  --accent-text: 78 86% 23%;     /* moss — texto/ícono acentuado sobre fondo claro (The Fill, Not Ink Rule) */
+
+  --destructive: 4 100% 65%;     /* signal-danger */
+  --destructive-foreground: 71 35% 94%;
+
+  --border: 60 21% 87%;          /* bone-border */
+  --input: 60 21% 87%;
+  --ring: 73 100% 62%;           /* volt — Volt Focus Glow */
+
+  --radius: 12px;
+}
+
+.dark {
+  --background: 80 11% 5%;       /* ink-950 */
+  --foreground: 71 35% 94%;      /* ink-text */
+  --card: 72 25% 8%;             /* ink-900 */
+  --card-foreground: 71 35% 94%;
+  --popover: 72 25% 8%;
+  --popover-foreground: 71 35% 94%;
+
+  --primary: 73 100% 62%;        /* volt */
+  --primary-foreground: 80 11% 5%; /* ink-950 */
+
+  --secondary: 72 25% 8%;        /* ink-900 */
+  --secondary-foreground: 71 35% 94%;
+
+  --muted: 72 25% 8%;            /* ink-900 */
+  --muted-foreground: 73 10% 52%; /* ink-muted */
+
+  --accent: 73 30% 14%;          /* volt, muy tenue sobre ink */
+  --accent-foreground: 71 35% 94%;
+  --accent-text: 73 100% 62%;    /* volt — texto/ícono acentuado sobre fondo oscuro */
+
+  --destructive: 4 100% 65%;     /* signal-danger */
+  --destructive-foreground: 71 35% 94%;
+
+  --border: 76 22% 14%;          /* ink-border */
+  --input: 76 22% 14%;
+  --ring: 73 100% 62%;           /* volt */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Asegurar touch targets mínimos en elementos interactivos */
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea {
+    @apply min-h-touch;
+  }
+}
+
+/* Utilidades */
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* The Measured Number Rule — todo dato de entrenamiento va en mono */
+  .font-measured {
+    @apply font-mono tabular-nums;
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-15T00:00:00.000Z",
+  "title": "Design System: GymApp",
+  "extensions": {
+    "colorMeta": {
+      "volt": {
+        "role": "primary",
+        "displayName": "Volt",
+        "canonical": "oklch(93% 0.24 128)",
+        "tonalRamp": ["#2A3300", "#455400", "#617700", "#7E9A00", "#9BBD10", "#B8DE22", "#D4FF3D", "#E9FFA0"]
+      },
+      "moss": {
+        "role": "primary-on-light",
+        "displayName": "Moss",
+        "canonical": "oklch(42% 0.12 128)",
+        "tonalRamp": ["#12160A", "#212B0F", "#324013", "#3F5510", "#4E6B08", "#638A0C", "#7CAD12", "#9CCF2A"]
+      },
+      "ink-950": {
+        "role": "neutral-bg-dark",
+        "displayName": "Ink 950",
+        "canonical": "oklch(15% 0.01 130)",
+        "tonalRamp": ["#0E0F0C", "#17190F", "#1F2214", "#2A2E1B", "#3A3F26", "#4E5535", "#666E48", "#82895E"]
+      },
+      "ink-900": {
+        "role": "neutral-surface-dark",
+        "displayName": "Ink 900",
+        "canonical": "oklch(19% 0.012 130)",
+        "tonalRamp": ["#0E0F0C", "#17190F", "#1F2214", "#2A2E1B", "#3A3F26", "#4E5535", "#666E48", "#82895E"]
+      },
+      "ink-border": { "role": "border-dark", "displayName": "Ink Border", "canonical": "oklch(24% 0.015 130)", "tonalRamp": ["#17190F", "#1D1F14", "#262A1B", "#333824", "#454C31", "#5B6341", "#747D57", "#919A70"] },
+      "ink-text": { "role": "text-on-dark", "displayName": "Ink Text", "canonical": "oklch(96% 0.01 120)", "tonalRamp": ["#3A3B32", "#5B5D50", "#7C7E6D", "#9DA08B", "#BEC2A9", "#DCE0C8", "#F3F5EA", "#FAFBF3"] },
+      "ink-text-muted": { "role": "text-muted-on-dark", "displayName": "Ink Text Muted", "canonical": "oklch(62% 0.03 110)", "tonalRamp": ["#2B2E20", "#3D412E", "#51553D", "#666B4E", "#7A805F", "#8B9078", "#A3A793", "#BFC3B0"] },
+      "bone-50": { "role": "neutral-bg-light", "displayName": "Bone 50", "canonical": "oklch(97% 0.006 100)", "tonalRamp": ["#3A392E", "#5C5A48", "#807E67", "#A3A188", "#C6C4AC", "#E2E1CE", "#FAFAF2", "#FDFDF9"] },
+      "bone-card": { "role": "neutral-surface-light", "displayName": "Bone Card", "canonical": "oklch(99% 0.003 100)", "tonalRamp": ["#3A3A38", "#5C5C58", "#807F78", "#A3A29A", "#C6C5BC", "#E5E4DC", "#FFFFFC", "#FFFFFF"] },
+      "bone-border": { "role": "border-light", "displayName": "Bone Border", "canonical": "oklch(90% 0.006 100)", "tonalRamp": ["#3A3931", "#5C5A4C", "#807E6C", "#A3A18C", "#C6C4AA", "#DEDCCB", "#E4E4D6", "#F0F0E6"] },
+      "bone-text": { "role": "text-on-light", "displayName": "Bone Text", "canonical": "oklch(18% 0.008 110)", "tonalRamp": ["#14150F", "#232419", "#343625", "#4A4C36", "#63654A", "#7F8161", "#9DA07C", "#BEC19E"] },
+      "bone-text-muted": { "role": "text-muted-on-light", "displayName": "Bone Text Muted", "canonical": "oklch(48% 0.02 100)", "tonalRamp": ["#232219", "#37362A", "#4C4B3B", "#5F5E4C", "#6B6E5C", "#83866F", "#9DA087", "#B9BCA3"] },
+      "signal-danger": { "role": "semantic-danger", "displayName": "Signal Danger", "canonical": "oklch(65% 0.19 25)", "tonalRamp": ["#3A0F0B", "#5C1811", "#832219", "#AB2C21", "#D3382A", "#FF5A4E", "#FF8A80", "#FFC0B8"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Nombre del plan generado, títulos de pantallas de celebración. Uso escaso y pesado." },
+      "headline": { "displayName": "Headline", "purpose": "Título de día de entrenamiento, encabezados de sección." },
+      "title": { "displayName": "Title", "purpose": "Nombre de ejercicio en tarjeta, títulos de componentes." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido, instrucciones, notas. Máx 65-75ch." },
+      "label": { "displayName": "Label / Measured Number", "purpose": "Todo dato numérico de entrenamiento: peso, reps, segundos, series, PRs — sin excepción." }
+    },
+    "shadows": [
+      { "name": "volt-focus-glow", "value": "0 0 0 3px rgba(212, 255, 61, 0.35)", "purpose": "Única sombra del sistema. Foco de inputs y borde del anillo de descanso activo. Nunca gris/negro." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Ease-out-quint por defecto para transiciones de estado (chips, botones, nav)." },
+      { "name": "duration-instant", "value": "150ms", "purpose": "Cambios de estado cotidianos: selección de chip, hover de botón." },
+      { "name": "duration-celebration", "value": "600ms", "purpose": "Momentos coreografiados: pulso del timer al llegar a cero, confetti de PR/plan completado." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA principal: empezar plan, siguiente serie, generar plan.",
+      "html": "<button class=\"ds-btn-primary\">EMPEZAR SERIE</button>",
+      "css": ".ds-btn-primary { background: #D4FF3D; color: #0E0F0C; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 1rem; letter-spacing: 0.01em; height: 56px; padding: 0 24px; border: none; border-radius: 12px; transition: background 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-primary:hover { background: #E4FF6B; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(212, 255, 61, 0.35); }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Acción secundaria: anterior, cancelar, volver.",
+      "html": "<button class=\"ds-btn-ghost\">Anterior</button>",
+      "css": ".ds-btn-ghost { background: transparent; color: #F3F5EA; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 1rem; height: 56px; padding: 0 24px; border: 1px solid #262A1B; border-radius: 12px; transition: border-color 150ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-ghost:hover { border-color: #8B9078; } .ds-btn-ghost:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(212, 255, 61, 0.35); }"
+    },
+    {
+      "name": "Filter Chip",
+      "kind": "chip",
+      "refersTo": "chip-selected",
+      "description": "Selección de objetivo, nivel o filtro de ejercicios. Estado seleccionado vs. no seleccionado.",
+      "html": "<div class=\"ds-chip-row\"><button class=\"ds-chip ds-chip-selected\">Hipertrofia</button><button class=\"ds-chip\">Fuerza</button></div>",
+      "css": ".ds-chip-row { display: flex; gap: 8px; } .ds-chip { background: #17190F; color: #8B9078; font-family: 'Inter', sans-serif; font-weight: 600; font-size: 0.875rem; padding: 8px 16px; border: none; border-radius: 999px; transition: background 150ms cubic-bezier(0.16, 1, 0.3, 1), color 150ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-chip-selected, .ds-chip:hover { background: #D4FF3D; color: #0E0F0C; }"
+    },
+    {
+      "name": "Stat Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Tarjeta de estadística con número medido (peso, PR, volumen) en Space Mono.",
+      "html": "<div class=\"ds-card\"><span class=\"ds-card-label\">Récord · Press banca</span><span class=\"ds-card-value\">92.5 <small>kg</small></span></div>",
+      "css": ".ds-card { background: #17190F; border: 1px solid #262A1B; border-radius: 20px; padding: 20px; display: inline-flex; flex-direction: column; gap: 8px; } .ds-card-label { font-family: 'Inter', sans-serif; font-size: 0.8125rem; color: #8B9078; } .ds-card-value { font-family: 'Space Mono', monospace; font-size: 1.75rem; font-weight: 500; color: #D4FF3D; } .ds-card-value small { font-size: 1rem; color: #8B9078; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de entrada estándar (login, onboarding, registro de series).",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"tu@email.com\" />",
+      "css": ".ds-input { background: #17190F; color: #F3F5EA; font-family: 'Inter', sans-serif; font-size: 1rem; height: 56px; width: 100%; padding: 0 16px; border: 1px solid transparent; border-radius: 12px; transition: border-color 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-input::placeholder { color: #8B9078; } .ds-input:focus { outline: none; border-color: #D4FF3D; box-shadow: 0 0 0 3px rgba(212, 255, 61, 0.35); }"
+    },
+    {
+      "name": "Rest Timer Ring",
+      "kind": "custom",
+      "refersTo": null,
+      "description": "Componente insignia: anillo circular de descanso entre series, con tiempo restante en Space Mono al centro.",
+      "html": "<div class=\"ds-timer\"><svg width=\"120\" height=\"120\" viewBox=\"0 0 120 120\"><circle class=\"ds-timer-track\" cx=\"60\" cy=\"60\" r=\"52\" /><circle class=\"ds-timer-progress\" cx=\"60\" cy=\"60\" r=\"52\" /></svg><span class=\"ds-timer-value\">01:24</span></div>",
+      "css": ".ds-timer { position: relative; width: 120px; height: 120px; display: flex; align-items: center; justify-content: center; } .ds-timer-track { fill: none; stroke: #262A1B; stroke-width: 6; } .ds-timer-progress { fill: none; stroke: #D4FF3D; stroke-width: 6; stroke-linecap: round; stroke-dasharray: 327; stroke-dashoffset: 90; transform: rotate(-90deg); transform-origin: 60px 60px; filter: drop-shadow(0 0 6px rgba(212, 255, 61, 0.45)); transition: stroke-dashoffset 1s linear; } .ds-timer-value { position: absolute; font-family: 'Space Mono', monospace; font-size: 1.5rem; font-weight: 500; color: #F3F5EA; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Charged Set",
+    "overview": "GymApp vive en la tensión entre la energía física cruda de entrenar y la precisión fría de un instrumento de medición. La identidad resuelve esa tensión con una superficie casi negra, cálida, silenciosa, sobre la que un único acento eléctrico — volt, un verde-lima que no existe en ningún otro fitness app — aparece únicamente en los momentos que importan: el botón que empieza la serie, el anillo del descanso corriendo, el badge de un PR. El resto de la superficie se queda callado a propósito para que el volt tenga peso cuando aparece. Esto rechaza explícitamente el gym-bro agresivo de negro+rojo+calaveras y el SaaS corporativo genérico de tarjetas idénticas y degradados grises.",
+    "keyCharacteristics": [
+      "Un solo acento saturado (volt), nunca una paleta de colores compitiendo entre sí.",
+      "Datos numéricos (peso, reps, tiempo) siempre en mono, nunca en la misma tipografía que la prosa.",
+      "Fondo casi negro cálido como estado natural; el modo claro existe pero funcional, no protagonista.",
+      "Silencio visual entre series; explosión de movimiento solo en el momento de logro."
+    ],
+    "rules": [
+      { "name": "The Fill, Not Ink Rule", "body": "Volt es un color de relleno de formas y bloques, nunca de texto pequeño ni de íconos finos sobre fondo claro. Donde se necesite un acento textual sobre bone-*, usar Moss.", "section": "colors" },
+      { "name": "The One Charge Rule", "body": "Solo hay un acento saturado en todo el sistema. Si una pantalla necesita distinguir dos estados a la vez, se resuelve con opacidad/peso de Volt, no agregando un segundo color.", "section": "colors" },
+      { "name": "The Measured Number Rule", "body": "Ningún número de entrenamiento se muestra jamás en Inter o Space Grotesk. Si es una cifra que el usuario registró o que el sistema calculó, va en Space Mono.", "section": "typography" },
+      { "name": "The Glow, Not Gray Rule", "body": "Prohibido usar box-shadow gris/negro ambient en cualquier componente. La única sombra del sistema es el Volt Focus Glow, reservado para estados activos/enfocados.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar Volt como relleno de superficies grandes y deliberadas, nunca como texto pequeño.",
+      "Do mostrar todo número de entrenamiento en Space Mono, sin excepción.",
+      "Do reservar el movimiento coreografiado para momentos de logro real: PR, plan completado, racha.",
+      "Do mantener Ink 950/Bone 50 tibios y ligeramente verdosos, nunca #000 ni #fff puros.",
+      "Do resolver profundidad con pasos tonales, no con sombras grises."
+    ],
+    "donts": [
+      "Don't usar la estética gym-bro agresiva: negro+rojo, calaveras, tipografía intimidante.",
+      "Don't caer en el dashboard SaaS genérico: tarjetas idénticas, degradados decorativos, íconos gris-azulados sin personalidad.",
+      "Don't usar un segundo color saturado porque haga falta distinguir algo.",
+      "Don't usar border-left/border-right de color como acento decorativo.",
+      "Don't usar gradiente en texto para énfasis.",
+      "Don't agregar sombras grises/negras ambient en ningún componente."
+    ]
+  }
+}

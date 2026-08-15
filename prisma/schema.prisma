@@ -1,0 +1,286 @@
+// Esquema Prisma para GymApp
+// Base de datos: PostgreSQL (Neon)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ============================================
+// Modelos de autenticación (NextAuth.js)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // Hash bcrypt para login con credenciales
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relaciones
+  accounts        Account[]
+  sessions        Session[]
+  profile         Profile?
+  plans           Plan[]
+  workoutSessions WorkoutSession[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// Perfil del usuario
+// ============================================
+
+model Profile {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  birthDate DateTime?
+  sex       Sex?
+  height    Float?    // en cm
+  weight    Float?    // en kg
+  goal      Goal      @default(HYPERTROPHY)
+  level     Level     @default(BEGINNER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// Catálogo de ejercicios
+// ============================================
+
+model Exercise {
+  id               String   @id
+  name             String
+  category         String   // Categoría principal
+  bodyPart         String   // Parte del cuerpo
+  equipment        String   // Equipamiento necesario
+  target           String   // Músculo objetivo
+  muscleGroup      String   // Grupo muscular
+  secondaryMuscles String[] // Músculos secundarios
+  instructionsEs   String?  @db.Text // Instrucciones en español
+  imageUrl         String?  // URL de imagen estática
+  gifUrl           String?  // URL de GIF animado
+
+  // Relaciones
+  planExercises PlanExercise[]
+  workoutSets   WorkoutSet[]
+
+  @@index([bodyPart])
+  @@index([muscleGroup])
+  @@index([equipment])
+  @@index([category])
+}
+
+// ============================================
+// Plan de entrenamiento
+// ============================================
+
+model Plan {
+  id            String     @id @default(cuid())
+  userId        String
+  name          String
+  goal          Goal
+  durationWeeks Int        @default(4)
+  daysPerWeek   Int        @default(4)
+  split         String     // Tipo de división (PPL, Upper/Lower, Full Body, etc.)
+  status        PlanStatus @default(ACTIVE)
+  startDate     DateTime   @default(now())
+  endDate       DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relaciones
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planDays PlanDay[]
+  feedback PlanFeedback[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model PlanDay {
+  id        String  @id @default(cuid())
+  planId    String
+  dayNumber Int     // Día 1, 2, 3...
+  name      String  // "Pecho y Tríceps", "Piernas", etc.
+  isRest    Boolean @default(false)
+
+  // Relaciones
+  plan      Plan             @relation(fields: [planId], references: [id], onDelete: Cascade)
+  exercises PlanExercise[]
+  workouts  WorkoutSession[]
+
+  @@unique([planId, dayNumber])
+  @@index([planId])
+}
+
+model PlanExercise {
+  id          String        @id @default(cuid())
+  planDayId   String
+  exerciseId  String
+  order       Int           // Orden dentro del día
+  phase       ExercisePhase @default(MAIN)
+  sets        Int           @default(3)
+  repsMin     Int           @default(8)
+  repsMax     Int           @default(12)
+  restSeconds Int           @default(90)
+  notes       String?       // Notas adicionales
+
+  // Relaciones
+  planDay  PlanDay  @relation(fields: [planDayId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([planDayId])
+  @@index([exerciseId])
+}
+
+// ============================================
+// Sesiones de entrenamiento (ejecución)
+// ============================================
+
+model WorkoutSession {
+  id          String    @id @default(cuid())
+  userId      String
+  planDayId   String?
+  weekNumber  Int?      // Semana del plan
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  notes       String?   @db.Text
+
+  // Relaciones
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planDay PlanDay?    @relation(fields: [planDayId], references: [id])
+  sets    WorkoutSet[]
+
+  @@index([userId])
+  @@index([planDayId])
+  @@index([startedAt])
+}
+
+model WorkoutSet {
+  id          String    @id @default(cuid())
+  sessionId   String
+  exerciseId  String
+  setNumber   Int       // Número de serie (1, 2, 3...)
+  reps        Int?      // Repeticiones realizadas
+  weight      Float?    // Peso en kg
+  completed   Boolean   @default(false)
+  rpe         Int?      // Rate of Perceived Exertion (1-10)
+  completedAt DateTime?
+
+  // Relaciones
+  session  WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exercise Exercise       @relation(fields: [exerciseId], references: [id])
+
+  // Índice compuesto único para upsert por sesión + ejercicio + serie
+  @@unique([sessionId, exerciseId, setNumber], name: "sessionId_exerciseId_setNumber")
+  @@index([sessionId])
+  @@index([exerciseId])
+}
+
+// ============================================
+// Feedback del plan
+// ============================================
+
+model PlanFeedback {
+  id         String     @id @default(cuid())
+  planId     String
+  difficulty Difficulty
+  notes      String?    @db.Text
+  createdAt  DateTime   @default(now())
+
+  // Relaciones
+  plan Plan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum Goal {
+  HYPERTROPHY    // Hipertrofia / ganancia muscular
+  STRENGTH       // Fuerza
+  ENDURANCE      // Resistencia
+  FAT_LOSS       // Pérdida de grasa
+  RECOMPOSITION  // Recomposición corporal
+}
+
+enum Level {
+  BEGINNER     // Principiante
+  INTERMEDIATE // Intermedio
+  ADVANCED     // Avanzado
+}
+
+enum Sex {
+  MALE   // Hombre
+  FEMALE // Mujer
+}
+
+enum ExercisePhase {
+  WARMUP   // Calentamiento
+  MAIN     // Ejercicio principal
+  COOLDOWN // Enfriamiento / elongación
+}
+
+enum PlanStatus {
+  ACTIVE    // Activo
+  COMPLETED // Completado
+  PAUSED    // Pausado
+  CANCELLED // Cancelado
+}
+
+enum Difficulty {
+  TOO_EASY   // Demasiado fácil
+  EASY       // Fácil
+  JUST_RIGHT // Adecuado
+  HARD       // Difícil
+  TOO_HARD   // Demasiado difícil
+}
