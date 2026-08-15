@@ -36,6 +36,20 @@
   --ring: 73 100% 62%;           /* volt — Volt Focus Glow */
 
   --radius: 12px;
+
+  /* Escala de tamaño de letra (accesibilidad — ver Perfil). 1 = Normal. */
+  --font-scale: 1;
+}
+
+/* Preferencia de tamaño de letra, aplicada como atributo en <html> por
+   FontSizeProvider. Pensada para personas con presbicia u otras dificultades
+   de lectura — solo afecta el tamaño del texto (ver tailwind.config.ts). */
+[data-font-size='LARGE'] {
+  --font-scale: 1.15;
+}
+
+[data-font-size='EXTRA_LARGE'] {
+  --font-scale: 1.3;
 }
 
 .dark {
@@ -74,7 +88,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-size: 16px;
+    font-size: calc(16px * var(--font-scale, 1));
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

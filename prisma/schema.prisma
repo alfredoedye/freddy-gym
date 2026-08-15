@@ -84,6 +84,7 @@ model Profile {
   weight    Float?    // en kg
   goal      Goal      @default(HYPERTROPHY)
   level     Level     @default(BEGINNER)
+  fontSize  FontSize  @default(NORMAL) // Preferencia de accesibilidad — tamaño de letra en toda la app
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -262,6 +263,12 @@ enum Level {
 enum Sex {
   MALE   // Hombre
   FEMALE // Mujer
+}
+
+enum FontSize {
+  NORMAL       // Tamaño estándar
+  LARGE        // Grande — más fácil de leer
+  EXTRA_LARGE  // Extra grande — máxima legibilidad (ej. presbicia)
 }
 
 enum ExercisePhase {

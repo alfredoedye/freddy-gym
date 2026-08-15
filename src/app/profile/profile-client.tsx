@@ -3,14 +3,25 @@
 import { useState } from 'react';
 import { signOut } from 'next-auth/react';
 import { toast } from 'sonner';
-import { LogOut, Loader2 } from 'lucide-react';
+import { LogOut, Loader2, Download, Share, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { useFontSize } from '@/components/providers/font-size-provider';
+import { useInstallPrompt } from '@/components/providers/install-prompt-provider';
 import { calculateAge } from '@/lib/date-utils';
-import { GOALS, LEVELS, SEXES, type Goal, type Level, type Sex } from '@/lib/profile-options';
+import {
+  GOALS,
+  LEVELS,
+  SEXES,
+  FONT_SIZES,
+  type Goal,
+  type Level,
+  type Sex,
+  type FontSize,
+} from '@/lib/profile-options';
 
 interface ProfileData {
   birthDate: string;
@@ -19,6 +30,7 @@ interface ProfileData {
   weight: string;
   goal: Goal;
   level: Level;
+  fontSize: FontSize;
 }
 
 interface ProfileClientProps {
@@ -46,6 +58,9 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
   const [level, setLevel] = useState<Level | null>(profile?.level || null);
   const [saving, setSaving] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [installing, setInstalling] = useState(false);
+  const { fontSize, setFontSize } = useFontSize();
+  const { canInstall, isInstalled, promptInstall } = useInstallPrompt();
 
   const age = birthDate ? calculateAge(new Date(birthDate)) : null;
   const isValid =
@@ -89,9 +104,37 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
     }
   };
 
+  const handleFontSizeChange = async (value: FontSize) => {
+    const previous = fontSize;
+    setFontSize(value); // aplicar de inmediato en toda la app
+
+    try {
+      const res = await fetch('/api/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fontSize: value }),
+      });
+
+      if (!res.ok) throw new Error('Error al guardar');
+    } catch {
+      setFontSize(previous);
+      toast.error('No se pudo guardar el tamaño de letra. Intentá de nuevo.');
+    }
+  };
+
   const handleSignOut = async () => {
     setSigningOut(true);
     await signOut({ callbackUrl: '/auth/login' });
+  };
+
+  const handleInstall = async () => {
+    setInstalling(true);
+    try {
+      const outcome = await promptInstall();
+      if (outcome === 'accepted') toast.success('¡GymApp instalada!');
+    } finally {
+      setInstalling(false);
+    }
   };
 
   return (
@@ -228,6 +271,86 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
               'Guardar cambios'
             )}
           </Button>
+        </section>
+
+        {/* Accesibilidad */}
+        <section className="space-y-3">
+          <h2 className="font-display text-lg font-bold text-foreground">Accesibilidad</h2>
+          <div className="space-y-2">
+            <Label>Tamaño de letra</Label>
+            <ToggleGroup
+              type="single"
+              value={fontSize}
+              onValueChange={(value) => value && handleFontSizeChange(value as FontSize)}
+            >
+              {FONT_SIZES.map((f) => (
+                <ToggleGroupItem key={f.value} value={f.value} className="flex-col gap-1 py-2">
+                  <span
+                    className={
+                      f.value === 'NORMAL'
+                        ? 'text-base'
+                        : f.value === 'LARGE'
+                          ? 'text-lg'
+                          : 'text-xl'
+                    }
+                  >
+                    {f.icon}
+                  </span>
+                  <span className="text-xs">{f.title}</span>
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <p className="text-sm text-muted-foreground">
+              Aumenta el tamaño del texto en toda la app para que sea más fácil de leer.
+            </p>
+          </div>
+        </section>
+
+        {/* Instalar app */}
+        <section className="space-y-3">
+          <h2 className="font-display text-lg font-bold text-foreground">Instalar app</h2>
+
+          {isInstalled ? (
+            <p className="text-sm text-muted-foreground">
+              Ya tenés GymApp instalada en este dispositivo. ✓
+            </p>
+          ) : canInstall ? (
+            <>
+              <Button onClick={handleInstall} disabled={installing} className="w-full">
+                {installing ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <Download className="h-5 w-5" />
+                    Instalar app
+                  </>
+                )}
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Se agrega a tu pantalla de inicio y abre como una app, sin la barra del navegador.
+              </p>
+            </>
+          ) : (
+            <div className="space-y-3 rounded-md bg-secondary p-4">
+              <p className="text-sm text-muted-foreground">
+                Si no te apareció el aviso para instalarla, agregala manualmente:
+              </p>
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">iPhone (Safari)</p>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Tocá <Share className="h-4 w-4 shrink-0" /> Compartir → &quot;Agregar a
+                  pantalla de inicio&quot;
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">Android (Chrome)</p>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Tocá el menú ⋮ → &quot;Instalar app&quot; (o{' '}
+                  <Plus className="h-4 w-4 shrink-0" /> &quot;Agregar a pantalla de inicio&quot;)
+                </p>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Cuenta */}

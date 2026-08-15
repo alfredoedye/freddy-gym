@@ -5,6 +5,7 @@
 export type Goal = 'HYPERTROPHY' | 'STRENGTH' | 'FAT_LOSS' | 'ENDURANCE' | 'RECOMPOSITION';
 export type Level = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 export type Sex = 'MALE' | 'FEMALE';
+export type FontSize = 'NORMAL' | 'LARGE' | 'EXTRA_LARGE';
 
 export const GOALS: { value: Goal; icon: string; title: string; description: string }[] = [
   { value: 'HYPERTROPHY', icon: '💪', title: 'Hipertrofia', description: 'Ganar masa muscular' },
@@ -23,4 +24,10 @@ export const LEVELS: { value: Level; icon: string; title: string; description: s
 export const SEXES: { value: Sex; icon: string; title: string; description: string }[] = [
   { value: 'MALE', icon: '♂️', title: 'Hombre', description: '' },
   { value: 'FEMALE', icon: '♀️', title: 'Mujer', description: '' },
+];
+
+export const FONT_SIZES: { value: FontSize; icon: string; title: string; description: string }[] = [
+  { value: 'NORMAL', icon: 'A', title: 'Normal', description: 'Tamaño estándar' },
+  { value: 'LARGE', icon: 'A', title: 'Grande', description: 'Más fácil de leer' },
+  { value: 'EXTRA_LARGE', icon: 'A', title: 'Extra grande', description: 'Máxima legibilidad' },
 ];

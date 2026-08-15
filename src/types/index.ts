@@ -148,6 +148,12 @@ export enum Sex {
   FEMALE = 'FEMALE',
 }
 
+export enum FontSize {
+  NORMAL = 'NORMAL',
+  LARGE = 'LARGE',
+  EXTRA_LARGE = 'EXTRA_LARGE',
+}
+
 /** Datos del perfil del usuario */
 export interface UserProfile {
   birthDate: string | null;
@@ -156,6 +162,7 @@ export interface UserProfile {
   weight: number | null;
   goal: Goal;
   level: Level;
+  fontSize: FontSize;
 }
 
 // ============================================

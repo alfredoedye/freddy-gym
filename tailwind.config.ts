@@ -10,13 +10,19 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
-      // Tamaños de fuente personalizados para legibilidad móvil
+      // Tamaños de fuente para legibilidad móvil. Todos escalan con
+      // --font-scale (ver globals.css) según la preferencia de tamaño de
+      // letra del usuario (Perfil > Accesibilidad) — solo el texto crece,
+      // no el espaciado/layout, para no romper la grilla mobile-first.
       fontSize: {
-        'body': ['16px', { lineHeight: '1.5' }],
-        'lg': ['18px', { lineHeight: '1.5' }],
-        'xl': ['20px', { lineHeight: '1.4' }],
-        '2xl': ['24px', { lineHeight: '1.3' }],
-        '3xl': ['30px', { lineHeight: '1.2' }],
+        'xs': ['calc(12px * var(--font-scale, 1))', { lineHeight: '1rem' }],
+        'sm': ['calc(14px * var(--font-scale, 1))', { lineHeight: '1.25rem' }],
+        'base': ['calc(16px * var(--font-scale, 1))', { lineHeight: '1.5rem' }],
+        'body': ['calc(16px * var(--font-scale, 1))', { lineHeight: '1.5' }],
+        'lg': ['calc(18px * var(--font-scale, 1))', { lineHeight: '1.5' }],
+        'xl': ['calc(20px * var(--font-scale, 1))', { lineHeight: '1.4' }],
+        '2xl': ['calc(24px * var(--font-scale, 1))', { lineHeight: '1.3' }],
+        '3xl': ['calc(30px * var(--font-scale, 1))', { lineHeight: '1.2' }],
       },
       fontFamily: {
         sans: ['var(--font-body)', 'Inter', 'sans-serif'],

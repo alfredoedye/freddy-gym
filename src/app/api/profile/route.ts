@@ -20,6 +20,7 @@ const profileSchema = z.object({
   weight: z.number().min(30).max(200),
   goal: z.enum(['HYPERTROPHY', 'STRENGTH', 'ENDURANCE', 'FAT_LOSS', 'RECOMPOSITION']),
   level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
+  fontSize: z.enum(['NORMAL', 'LARGE', 'EXTRA_LARGE']).optional(),
 });
 
 // GET — Obtener perfil del usuario actual

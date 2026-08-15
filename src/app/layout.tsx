@@ -1,10 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, Space_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
+import { getServerSession } from 'next-auth';
 import { SessionProvider } from '@/components/providers/session-provider';
 import { RegisterServiceWorker } from '@/components/providers/register-service-worker';
+import { InstallPromptProvider } from '@/components/providers/install-prompt-provider';
+import { FontSizeProvider } from '@/components/providers/font-size-provider';
 import { AppShell } from '@/components/layout/app-shell';
 import { Toaster } from '@/components/ui/sonner';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import './globals.css';
 import { cn } from '@/lib/utils';
 
@@ -41,30 +46,44 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession(authOptions);
+  const profile = session?.user?.id
+    ? await prisma.profile.findUnique({
+        where: { userId: session.user.id },
+        select: { fontSize: true },
+      })
+    : null;
+  const fontSize = profile?.fontSize || 'NORMAL';
+
   return (
     <html
       lang="es"
       suppressHydrationWarning
+      data-font-size={fontSize}
       className={cn(inter.variable, spaceGrotesk.variable, spaceMono.variable)}
     >
       <body className="font-sans text-body antialiased">
         <RegisterServiceWorker />
-        <SessionProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem={false}
-            disableTransitionOnChange
-          >
-            <AppShell>{children}</AppShell>
-            <Toaster position="top-center" />
-          </ThemeProvider>
-        </SessionProvider>
+        <InstallPromptProvider>
+          <SessionProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem={false}
+              disableTransitionOnChange
+            >
+              <FontSizeProvider initialFontSize={fontSize}>
+                <AppShell>{children}</AppShell>
+                <Toaster position="top-center" />
+              </FontSizeProvider>
+            </ThemeProvider>
+          </SessionProvider>
+        </InstallPromptProvider>
       </body>
     </html>
   );

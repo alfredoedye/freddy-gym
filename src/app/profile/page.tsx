@@ -31,6 +31,7 @@ export default async function ProfilePage() {
               weight: profile.weight?.toString() || '',
               goal: profile.goal,
               level: profile.level,
+              fontSize: profile.fontSize,
             }
           : null
       }
