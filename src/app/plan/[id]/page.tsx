@@ -2,7 +2,9 @@
 
 /**
  * Página de vista del plan generado.
- * Muestra todos los días con sus ejercicios y permite activar el plan.
+ * Muestra todos los días con sus ejercicios, permite activar el plan,
+ * editar la prescripción (series/reps/descanso/notas) o reemplazar un
+ * ejercicio, y eliminar/cancelar el plan.
  */
 
 import { useEffect, useState } from 'react';
@@ -17,8 +19,16 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Pencil,
+  Check,
+  X,
+  Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ExercisePickerDialog } from '@/components/plan/exercise-picker-dialog';
+import { goalLabels, splitLabels } from '@/lib/plan-labels';
 
 // Tipos locales (espejo del response de la API)
 type ExercisePhase = 'WARMUP' | 'MAIN' | 'COOLDOWN';
@@ -68,21 +78,6 @@ interface PlanView {
   planDays: PlanDayView[];
 }
 
-const goalLabels: Record<string, string> = {
-  HYPERTROPHY: 'Hipertrofia',
-  STRENGTH: 'Fuerza',
-  ENDURANCE: 'Resistencia',
-  FAT_LOSS: 'Pérdida de grasa',
-  RECOMPOSITION: 'Recomposición',
-};
-
-const splitLabels: Record<string, string> = {
-  push_pull_legs: 'Push / Pull / Legs',
-  upper_lower: 'Upper / Lower',
-  full_body: 'Full Body',
-  bro_split: 'Bro Split',
-};
-
 const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 export default function PlanViewPage() {
@@ -94,6 +89,8 @@ export default function PlanViewPage() {
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
   const [activating, setActivating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchPlan();
@@ -139,6 +136,58 @@ export default function PlanViewPage() {
     }
   };
 
+  const handleExerciseSaved = (planDayId: string, updated: PlanExerciseView) => {
+    setPlan((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        planDays: prev.planDays.map((day) =>
+          day.id !== planDayId
+            ? day
+            : {
+                ...day,
+                exercises: day.exercises.map((ex) => (ex.id === updated.id ? updated : ex)),
+              }
+        ),
+      };
+    });
+  };
+
+  const handleDeletePlan = async () => {
+    if (!plan) return;
+    if (
+      !window.confirm(
+        `¿Eliminar "${plan.name}"? Si ya tiene entrenamientos registrados, se cancelará en vez de borrarse.`
+      )
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/plans/${planId}`, { method: 'DELETE' });
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'No se pudo eliminar el plan');
+        return;
+      }
+
+      if (data.action === 'deleted') {
+        toast.success('Plan eliminado');
+        router.push('/plan');
+      } else {
+        toast.info('El plan tenía entrenamientos registrados, se canceló en su lugar');
+        setPlan((prev) => (prev ? { ...prev, status: 'CANCELLED' } : prev));
+      }
+    } catch (err) {
+      console.error('Error al eliminar plan:', err);
+      toast.error('Error de conexión');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -171,7 +220,26 @@ export default function PlanViewPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-display text-xl font-bold truncate">{plan.name}</h1>
+          <h1 className="font-display text-xl font-bold truncate flex-1">{plan.name}</h1>
+          <button
+            onClick={() => setIsEditing((v) => !v)}
+            className={`p-2 rounded-md transition-colors duration-150 ${isEditing ? 'bg-accent text-accent-text' : 'hover:bg-secondary'}`}
+            aria-label="Editar plan"
+          >
+            <Pencil className="w-5 h-5" />
+          </button>
+          <button
+            onClick={handleDeletePlan}
+            disabled={deleting}
+            className="p-2 -mr-2 rounded-md hover:bg-secondary transition-colors duration-150 disabled:opacity-50"
+            aria-label="Eliminar plan"
+          >
+            {deleting ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Trash2 className="w-5 h-5 text-destructive" />
+            )}
+          </button>
         </div>
       </header>
 
@@ -211,6 +279,9 @@ export default function PlanViewPage() {
                 dayLabel={dayNames[day.dayNumber - 1]}
                 expanded={expandedDays.has(day.dayNumber)}
                 onToggle={() => toggleDay(day.dayNumber)}
+                isEditing={isEditing}
+                planId={planId}
+                onExerciseSaved={(updated) => handleExerciseSaved(day.id, updated)}
               />
             ))}
           </div>
@@ -218,20 +289,22 @@ export default function PlanViewPage() {
       </div>
 
       {/* Botón flotante — Empezar plan */}
-      <div className="fixed bottom-20 left-0 right-0 px-4 pb-4">
-        <div className="max-w-lg mx-auto">
-          <Button onClick={handleStartPlan} disabled={activating} size="lg" className="w-full">
-            {activating ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <Play className="w-5 h-5 fill-primary-foreground" />
-                Empezar Plan
-              </>
-            )}
-          </Button>
+      {plan.status !== 'ACTIVE' && (
+        <div className="fixed bottom-20 left-0 right-0 px-4 pb-4">
+          <div className="max-w-lg mx-auto">
+            <Button onClick={handleStartPlan} disabled={activating} size="lg" className="w-full">
+              {activating ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Play className="w-5 h-5 fill-primary-foreground" />
+                  Empezar Plan
+                </>
+              )}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -263,11 +336,17 @@ function DayCard({
   dayLabel,
   expanded,
   onToggle,
+  isEditing,
+  planId,
+  onExerciseSaved,
 }: {
   day: PlanDayView;
   dayLabel: string;
   expanded: boolean;
   onToggle: () => void;
+  isEditing: boolean;
+  planId: string;
+  onExerciseSaved: (updated: PlanExerciseView) => void;
 }) {
   if (day.isRest) {
     return (
@@ -316,43 +395,233 @@ function DayCard({
                   {phaseLabels[phase]}
                 </p>
                 <div className="space-y-3">
-                  {exercisesInPhase.map((ex) => (
-                    <div key={ex.id} className="flex items-center gap-3">
-                      {/* Thumbnail */}
-                      {ex.exercise.imageUrl && (
-                        <img
-                          src={ex.exercise.imageUrl}
-                          alt={ex.exercise.name}
-                          className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
-                        />
-                      )}
-                      {!ex.exercise.imageUrl && (
-                        <div className="w-12 h-12 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
-                          <Dumbbell className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-base truncate">{ex.exercise.name}</p>
-                        <p className="text-sm text-muted-foreground font-mono">
-                          {ex.sets} × {ex.repsMin === ex.repsMax ? ex.repsMin : `${ex.repsMin}-${ex.repsMax}`}
-                          {phase === 'COOLDOWN' ? '' : ' reps'}
-                          {' · '}
-                          {ex.restSeconds}s descanso
-                        </p>
-                        {ex.notes && (
-                          <p className="text-xs text-accent-text mt-0.5">💡 {ex.notes}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  {exercisesInPhase.map((ex) =>
+                    isEditing ? (
+                      <EditableExerciseRow
+                        key={ex.id}
+                        exercise={ex}
+                        phase={phase}
+                        planId={planId}
+                        onSaved={onExerciseSaved}
+                      />
+                    ) : (
+                      <ExerciseRow key={ex.id} exercise={ex} phase={phase} />
+                    )
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phase: ExercisePhase }) {
+  return (
+    <div className="flex items-center gap-3">
+      {ex.exercise.imageUrl ? (
+        <img
+          src={ex.exercise.imageUrl}
+          alt={ex.exercise.name}
+          className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
+        />
+      ) : (
+        <div className="w-12 h-12 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+          <Dumbbell className="w-5 h-5 text-muted-foreground" />
+        </div>
+      )}
+
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-base truncate">{ex.exercise.name}</p>
+        <p className="text-sm text-muted-foreground font-mono">
+          {ex.sets} × {ex.repsMin === ex.repsMax ? ex.repsMin : `${ex.repsMin}-${ex.repsMax}`}
+          {phase === 'COOLDOWN' ? '' : ' reps'}
+          {' · '}
+          {ex.restSeconds}s descanso
+        </p>
+        {ex.notes && <p className="text-xs text-accent-text mt-0.5">💡 {ex.notes}</p>}
+      </div>
+    </div>
+  );
+}
+
+function EditableExerciseRow({
+  exercise: ex,
+  phase,
+  planId,
+  onSaved,
+}: {
+  exercise: PlanExerciseView;
+  phase: ExercisePhase;
+  planId: string;
+  onSaved: (updated: PlanExerciseView) => void;
+}) {
+  const [sets, setSets] = useState(ex.sets);
+  const [repsMin, setRepsMin] = useState(ex.repsMin);
+  const [repsMax, setRepsMax] = useState(ex.repsMax);
+  const [restSeconds, setRestSeconds] = useState(ex.restSeconds);
+  const [notes, setNotes] = useState(ex.notes || '');
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pendingExercise, setPendingExercise] = useState(ex.exercise);
+  const [saving, setSaving] = useState(false);
+
+  const dirty =
+    sets !== ex.sets ||
+    repsMin !== ex.repsMin ||
+    repsMax !== ex.repsMax ||
+    restSeconds !== ex.restSeconds ||
+    notes !== (ex.notes || '') ||
+    pendingExercise.id !== ex.exercise.id;
+
+  const resetToSaved = () => {
+    setSets(ex.sets);
+    setRepsMin(ex.repsMin);
+    setRepsMax(ex.repsMax);
+    setRestSeconds(ex.restSeconds);
+    setNotes(ex.notes || '');
+    setPendingExercise(ex.exercise);
+  };
+
+  const handleSave = async () => {
+    if (repsMin > repsMax) {
+      toast.error('El mínimo de reps no puede ser mayor al máximo');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/plans/${planId}/exercises/${ex.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sets,
+          repsMin,
+          repsMax,
+          restSeconds,
+          notes: notes.trim() || null,
+          ...(pendingExercise.id !== ex.exercise.id ? { exerciseId: pendingExercise.id } : {}),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'No se pudo guardar el cambio');
+        return;
+      }
+
+      onSaved(data.exercise);
+      toast.success('Ejercicio actualizado');
+    } catch (err) {
+      console.error('Error al guardar ejercicio:', err);
+      toast.error('Error de conexión');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-md border border-border p-3 space-y-3">
+      <div className="flex items-center gap-3">
+        {pendingExercise.imageUrl ? (
+          <img
+            src={pendingExercise.imageUrl}
+            alt={pendingExercise.name}
+            className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-md bg-secondary flex items-center justify-center flex-shrink-0">
+            <Dumbbell className="w-5 h-5 text-muted-foreground" />
+          </div>
+        )}
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-base truncate">{pendingExercise.name}</p>
+          <button
+            onClick={() => setPickerOpen(true)}
+            className="text-xs text-accent-text hover:underline"
+          >
+            Cambiar ejercicio
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <NumberField label="Series" value={sets} onChange={setSets} min={1} max={10} />
+        <NumberField label="Reps min" value={repsMin} onChange={setRepsMin} min={1} max={50} />
+        <NumberField label="Reps max" value={repsMax} onChange={setRepsMax} min={1} max={50} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <NumberField
+          label="Descanso (seg)"
+          value={restSeconds}
+          onChange={setRestSeconds}
+          min={0}
+          max={600}
+        />
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Notas</label>
+          <Input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="h-9 text-sm"
+            placeholder="Opcional"
+          />
+        </div>
+      </div>
+
+      {dirty && (
+        <div className="flex items-center gap-2 justify-end">
+          <Button variant="ghost" size="sm" onClick={resetToSaved} disabled={saving}>
+            <X className="w-4 h-4" />
+            Cancelar
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={saving}>
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Guardar
+          </Button>
+        </div>
+      )}
+
+      <ExercisePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        onSelect={(selected) => {
+          setPendingExercise(selected);
+          setPickerOpen(false);
+        }}
+      />
+    </div>
+  );
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  min,
+  max,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  min: number;
+  max: number;
+}) {
+  return (
+    <div>
+      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
+      <Input
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        onChange={(e) => {
+          const parsed = parseInt(e.target.value, 10);
+          if (!Number.isNaN(parsed)) onChange(Math.min(max, Math.max(min, parsed)));
+        }}
+        className="h-9 text-sm"
+      />
     </div>
   );
 }

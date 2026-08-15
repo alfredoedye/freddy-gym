@@ -60,3 +60,50 @@ export async function GET(
     );
   }
 }
+
+/**
+ * DELETE /api/plans/[planId]
+ * Si el plan nunca registró entrenamientos, lo borra por completo.
+ * Si ya tiene historial (WorkoutSession asociadas), lo cancela en su lugar
+ * para no perder los datos registrados.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { planId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const plan = await prisma.plan.findFirst({
+      where: { id: params.planId, userId: session.user.id },
+    });
+
+    if (!plan) {
+      return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
+    }
+
+    const sessionCount = await prisma.workoutSession.count({
+      where: { planDay: { planId: plan.id } },
+    });
+
+    if (sessionCount > 0) {
+      const updated = await prisma.plan.update({
+        where: { id: plan.id },
+        data: { status: 'CANCELLED', endDate: new Date() },
+      });
+      return NextResponse.json({ action: 'cancelled', plan: updated });
+    }
+
+    await prisma.plan.delete({ where: { id: plan.id } });
+    return NextResponse.json({ action: 'deleted' });
+  } catch (error) {
+    console.error('Error en DELETE /api/plans/[planId]:', error);
+    return NextResponse.json(
+      { error: 'Error interno del servidor' },
+      { status: 500 }
+    );
+  }
+}

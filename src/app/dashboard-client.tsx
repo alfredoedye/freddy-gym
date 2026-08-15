@@ -119,6 +119,12 @@ export function DashboardClient({
                 }}
               />
             </div>
+            <Link
+              href="/plan"
+              className="mt-3 inline-block text-sm font-medium text-accent-text hover:underline"
+            >
+              Ver todos los planes →
+            </Link>
           </div>
         </div>
       )}
@@ -170,6 +176,12 @@ export function DashboardClient({
             <Button asChild>
               <Link href="/plan/create">Crear plan</Link>
             </Button>
+            <Link
+              href="/plan"
+              className="mt-3 block text-sm font-medium text-accent-text hover:underline"
+            >
+              Ver planes anteriores →
+            </Link>
           </div>
         </div>
       )}
