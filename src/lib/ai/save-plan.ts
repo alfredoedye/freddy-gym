@@ -83,10 +83,12 @@ export async function savePlanToDatabase(
       });
     }
 
-    // 3. Si hay plan anterior activo, marcarlo como completado
+    // 3. Si hay plan anterior activo, marcarlo como completado.
+    // updateMany + userId (en vez de update por id) para que esto sea un no-op
+    // si por algún motivo previousPlanId no pertenece a este usuario.
     if (input.previousPlanId) {
-      await tx.plan.update({
-        where: { id: input.previousPlanId },
+      await tx.plan.updateMany({
+        where: { id: input.previousPlanId, userId },
         data: { status: 'COMPLETED' },
       });
     }

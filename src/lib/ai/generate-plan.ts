@@ -128,7 +128,7 @@ export async function generateTrainingPlan(
     }
 
     if (input.previousPlanId) {
-      const progressionData = await fetchProgressionData(input.previousPlanId);
+      const progressionData = await fetchProgressionData(input.previousPlanId, input.userId);
       if (progressionData) {
         progressionParts.push(buildProgressionContext(progressionData));
       }
@@ -231,10 +231,11 @@ export async function generateTrainingPlan(
 
 /**
  * Obtiene datos del plan anterior para contexto de progresión.
+ * Requiere userId para verificar que el plan pertenece al usuario que genera el nuevo plan.
  */
-async function fetchProgressionData(planId: string) {
-  const plan = await prisma.plan.findUnique({
-    where: { id: planId },
+async function fetchProgressionData(planId: string, userId: string) {
+  const plan = await prisma.plan.findFirst({
+    where: { id: planId, userId },
     include: {
       feedback: true,
       planDays: {

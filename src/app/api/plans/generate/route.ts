@@ -6,9 +6,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
 import { generateTrainingPlan } from '@/lib/ai/generate-plan';
 import { savePlanToDatabase } from '@/lib/ai/save-plan';
 import { GeneratePlanRequestSchema } from '@/lib/ai/schemas';
+
+// La generación reintenta hasta 3 veces contra el LLM (ver MAX_RETRIES en generate-plan.ts);
+// en el peor caso puede superar el timeout por default de las funciones de Vercel.
+export const maxDuration = 120;
 
 export async function POST(request: NextRequest) {
   try {
@@ -39,6 +44,20 @@ export async function POST(request: NextRequest) {
     const { goal, durationWeeks, daysPerWeek, split, timePerSession, previousPlanId } =
       validation.data;
 
+    // 2b. Si se indicó un plan anterior, verificar que pertenece al usuario
+    // (previousPlanId viene del cliente — sin esto, cualquier usuario podría leer
+    // el progreso de otro y marcar su plan como completado)
+    if (previousPlanId) {
+      const previousPlan = await prisma.plan.findFirst({
+        where: { id: previousPlanId, userId: session.user.id },
+        select: { id: true },
+      });
+
+      if (!previousPlan) {
+        return NextResponse.json({ error: 'Plan anterior no encontrado' }, { status: 404 });
+      }
+    }
+
     // 3. Generar plan con IA
     const result = await generateTrainingPlan({
       userId: session.user.id,
@@ -51,10 +70,8 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error, details: result.details },
-        { status: 500 }
-      );
+      console.error('[API /plans/generate] Fallo generación:', result.error, result.details);
+      return NextResponse.json({ error: result.error }, { status: 500 });
     }
 
     // 4. Guardar en la base de datos
@@ -75,12 +92,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('[API /plans/generate] Error:', error);
 
-    return NextResponse.json(
-      {
-        error: 'Error interno del servidor',
-        details: error instanceof Error ? error.message : undefined,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

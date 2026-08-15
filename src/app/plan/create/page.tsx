@@ -142,7 +142,20 @@ export default function CreatePlanPage() {
       // Redirigir a la vista del plan generado
       router.push(`/plan/${data.plan.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error inesperado');
+      // La generación puede tardar bastante (varios intentos contra el LLM); en el celular,
+      // si se corta la conexión o se bloquea la pantalla, fetch() falla con errores genéricos
+      // de red ("Load failed" en Safari, "Failed to fetch" en Chrome) en vez de un error real del servidor.
+      const isNetworkError =
+        err instanceof TypeError ||
+        (err instanceof Error && /load failed|failed to fetch|network/i.test(err.message));
+
+      setError(
+        isNetworkError
+          ? 'Se perdió la conexión mientras generábamos tu plan. Mantené la pantalla desbloqueada y la app abierta, y volvé a intentar con buena señal.'
+          : err instanceof Error
+            ? err.message
+            : 'Error inesperado'
+      );
     } finally {
       clearInterval(interval);
       setIsGenerating(false);

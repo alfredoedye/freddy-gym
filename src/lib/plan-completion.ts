@@ -30,11 +30,12 @@ export async function checkPlanCompletion(planId: string): Promise<boolean> {
 }
 
 /**
- * Obtiene estadísticas del plan completado
+ * Obtiene estadísticas del plan completado.
+ * Requiere userId para verificar que el plan pertenece al usuario que lo solicita.
  */
-export async function getPlanStats(planId: string) {
-  const plan = await prisma.plan.findUnique({
-    where: { id: planId },
+export async function getPlanStats(planId: string, userId: string) {
+  const plan = await prisma.plan.findFirst({
+    where: { id: planId, userId },
     include: {
       planDays: {
         where: { isRest: false },

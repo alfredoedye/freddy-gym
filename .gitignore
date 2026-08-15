@@ -22,3 +22,8 @@ npm-debug.log*
 next-env.d.ts
 .vercel
 .env*
+
+# Claude Code tooling (local agent/skill metadata, not app code)
+.agents/
+.claude/
+skills-lock.json

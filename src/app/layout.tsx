@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Space_Grotesk, Space_Mono } from 'next/font/google';
 import { ThemeProvider } from 'next-themes';
 import { SessionProvider } from '@/components/providers/session-provider';
+import { RegisterServiceWorker } from '@/components/providers/register-service-worker';
 import { AppShell } from '@/components/layout/app-shell';
 import { Toaster } from '@/components/ui/sonner';
 import './globals.css';
@@ -17,8 +18,15 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'GymApp',
+  },
+  icons: {
+    icon: [
+      { url: '/icons/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
   },
 };
 
@@ -44,11 +52,8 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(inter.variable, spaceGrotesk.variable, spaceMono.variable)}
     >
-      <head>
-        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-      </head>
       <body className="font-sans text-body antialiased">
+        <RegisterServiceWorker />
         <SessionProvider>
           <ThemeProvider
             attribute="class"

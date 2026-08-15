@@ -14,12 +14,15 @@ const SKIP_PROFILE_CHECK = ['/onboarding', '/api/profile', '/api/auth'];
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Permitir assets estáticos y API de auth
+  // Permitir assets estáticos y API de auth.
+  // Nota: el chequeo de extensión de archivo se limita al FINAL del pathname
+  // (no pathname.includes('.')) para que un segmento dinámico con un punto
+  // (ej. un id malformado) no pueda saltarse la autenticación.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/manifest') ||
-    pathname.includes('.') ||
+    /\.(png|jpg|jpeg|gif|svg|ico|webp|json|txt|xml|woff2?|css|js|map)$/i.test(pathname) ||
     AUTH_BYPASS.some((path) => pathname.startsWith(path))
   ) {
     return NextResponse.next();

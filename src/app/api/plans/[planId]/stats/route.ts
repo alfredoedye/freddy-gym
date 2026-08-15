@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const stats = await getPlanStats(params.planId);
+    const stats = await getPlanStats(params.planId, session.user.id);
 
     if (!stats) {
       return NextResponse.json(
