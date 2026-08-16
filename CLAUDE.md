@@ -22,7 +22,7 @@ npx prisma studio                      # DB browser UI (also: npm run prisma:stu
 npx tsx scripts/create-user.ts         # create an initial user directly in the DB
 ```
 
-There is no test suite configured in this repo.
+Tests: Vitest (`npm test` to run once, `npm run test:watch` for watch mode). The suite lives in `tests/` (`unit/` for domain logic, `api/` for route handlers called directly, `hooks/` for client hooks via `@testing-library/react` + a per-file `@vitest-environment jsdom` pragma) and runs fully mocked — no DB or network needed. Prisma is mocked via the explicit hand-rolled mock in `tests/helpers/prisma-mock.ts` (add methods there when routes start using new ones), sessions via mocking `next-auth`'s `getServerSession`. `tests/helpers/fixtures.ts` builds schema-valid generated plans. When testing hooks, build the params object once outside the `renderHook` callback — `useWorkout`'s init effect depends on array prop identity and re-creating them per render loops until OOM.
 
 Env vars required: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (optional — leave blank to disable Google sign-in locally), `AI_PROVIDER` (`openai` or `anthropic`), `OPENAI_API_KEY`/`OPENAI_MODEL`, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`. No `.env.example` is committed; `.env` is gitignored. For local dev, a Postgres instance is easiest to run via `docker run -e POSTGRES_USER=gymapp -e POSTGRES_PASSWORD=gymapp -e POSTGRES_DB=gymapp -p 5434:5432 postgres:17-alpine` with `DATABASE_URL="postgresql://gymapp:gymapp@localhost:5434/gymapp"`. `NEXTAUTH_URL` must match whatever host/port the app actually runs on, or the credentials/OAuth callback flow silently breaks.
 
