@@ -4,15 +4,21 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
-// Schema de validación para un set
+// Schema de validación para un set. Los topes (reps/peso/serie) evitan que
+// datos basura de un cliente roto entren a los PRs y al contexto de
+// progresión que alimenta la generación del próximo plan.
 const SetSchema = z.object({
   exerciseId: z.string().min(1),
-  setNumber: z.number().int().min(1),
-  reps: z.number().int().min(0).nullable(),
-  weight: z.number().min(0).nullable(),
+  setNumber: z.number().int().min(1).max(50),
+  reps: z.number().int().min(0).max(200).nullable(),
+  weight: z.number().min(0).max(500).nullable(),
   completed: z.boolean(),
   rpe: z.number().int().min(1).max(10).nullable().optional(),
 });
+
+// Margen de series extra permitidas sobre lo prescripto (el usuario puede
+// hacer alguna serie de más, pero no 500).
+const EXTRA_SETS_SLACK = 3;
 
 interface RouteParams {
   params: { sessionId: string };
@@ -31,6 +37,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Verificar que la sesión de workout pertenece al usuario
     const workoutSession = await prisma.workoutSession.findUnique({
       where: { id: sessionId },
+      include: {
+        planDay: {
+          include: {
+            exercises: { select: { exerciseId: true, sets: true } },
+          },
+        },
+      },
     });
 
     if (!workoutSession || workoutSession.userId !== session.user.id) {
@@ -56,6 +69,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const { exerciseId, setNumber, reps, weight, completed, rpe } = parsed.data;
+
+    // Si la sesión pertenece a un día de plan, el set tiene que ser de un
+    // ejercicio de ese día y con un número de serie razonable respecto a lo
+    // prescripto. (Las sesiones libres sin planDay no tienen esta restricción.)
+    if (workoutSession.planDay) {
+      const planExercise = workoutSession.planDay.exercises.find(
+        (e) => e.exerciseId === exerciseId
+      );
+
+      if (!planExercise) {
+        return NextResponse.json(
+          { error: 'El ejercicio no pertenece a este día del plan' },
+          { status: 400 }
+        );
+      }
+
+      if (setNumber > planExercise.sets + EXTRA_SETS_SLACK) {
+        return NextResponse.json(
+          { error: `Número de serie fuera de rango (máximo ${planExercise.sets + EXTRA_SETS_SLACK})` },
+          { status: 400 }
+        );
+      }
+    }
 
     // Upsert: crear o actualizar el set
     const workoutSet = await prisma.workoutSet.upsert({

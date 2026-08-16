@@ -10,7 +10,12 @@ interface CallLLMOptions {
   temperature?: number;
   maxTokens?: number;
   jsonMode?: boolean;
+  timeoutMs?: number;
 }
+
+// Tope por llamada: una llamada colgada no puede comerse el presupuesto entero
+// de la función (maxDuration 120s) — con esto quedan ~2 reintentos posibles.
+const DEFAULT_TIMEOUT_MS = 45_000;
 
 interface LLMResponse {
   content: string;
@@ -30,7 +35,12 @@ export async function callLLM(
   userPrompt: string,
   options: CallLLMOptions = {}
 ): Promise<LLMResponse> {
-  const { temperature = 0.7, maxTokens = 4000, jsonMode = true } = options;
+  const {
+    temperature = 0.7,
+    maxTokens = 4000,
+    jsonMode = true,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+  } = options;
 
   const jsonInstruction = jsonMode
     ? '\n\nIMPORTANTE: Responde ÚNICAMENTE con JSON válido. Sin texto adicional, sin markdown, sin bloques de código.'
@@ -42,6 +52,7 @@ export async function callLLM(
     prompt: userPrompt,
     temperature,
     maxOutputTokens: maxTokens,
+    abortSignal: AbortSignal.timeout(timeoutMs),
   });
 
   return {

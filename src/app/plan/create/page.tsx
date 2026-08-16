@@ -3,10 +3,12 @@
 /**
  * Página de creación de plan de entrenamiento.
  * El usuario configura parámetros y la IA genera el plan.
+ * Con ?previousPlanId=<id> (viniendo del flujo de feedback), prefill de los
+ * parámetros del plan anterior y la generación usa su progresión + feedback.
  */
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Dumbbell,
   Calendar,
@@ -84,7 +86,23 @@ const LOADING_MESSAGES = [
 ];
 
 export default function CreatePlanPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <CreatePlanContent />
+    </Suspense>
+  );
+}
+
+function CreatePlanContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const previousPlanId = searchParams.get('previousPlanId');
 
   // Estado del formulario
   const [goal, setGoal] = useState('HYPERTROPHY');
@@ -97,6 +115,43 @@ export default function CreatePlanPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState('');
+  const [prefilledFromPrevious, setPrefilledFromPrevious] = useState(false);
+
+  // Prefill desde el plan anterior (flujo post-feedback): el usuario ya tomó
+  // estas decisiones — no obligarlo a tomarlas de nuevo.
+  useEffect(() => {
+    if (!previousPlanId) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/plans');
+        if (!res.ok) return;
+        const data = await res.json();
+        const prev = (data.plans || []).find(
+          (p: { id: string }) => p.id === previousPlanId
+        );
+        if (!prev || cancelled) return;
+
+        setGoal(prev.goal);
+        setDurationWeeks(prev.durationWeeks);
+        setDaysPerWeek(prev.daysPerWeek);
+        const splitsForDays = SPLITS[prev.daysPerWeek] || SPLITS[4];
+        setSplit(
+          splitsForDays.some((s) => s.value === prev.split)
+            ? prev.split
+            : splitsForDays[0].value
+        );
+        setPrefilledFromPrevious(true);
+      } catch {
+        // Sin prefill no se rompe nada — el usuario configura a mano.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [previousPlanId]);
 
   // Actualizar split disponible cuando cambian los días
   const availableSplits = SPLITS[daysPerWeek] || SPLITS[4];
@@ -130,12 +185,20 @@ export default function CreatePlanPage() {
           daysPerWeek,
           split,
           timePerSession,
+          previousPlanId: previousPlanId || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
+        // 409: ya hay un plan recién generado (ej. doble tap o un reintento
+        // cuando la primera generación sí llegó a guardarse) — ir a ese plan
+        // en vez de generar (y pagar) otro.
+        if (response.status === 409 && data.existingPlanId) {
+          router.push(`/plan/${data.existingPlanId}`);
+          return;
+        }
         throw new Error(data.error || 'Error al generar el plan');
       }
 
@@ -179,6 +242,16 @@ export default function CreatePlanPage() {
       </header>
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Aviso de prefill post-feedback */}
+        {prefilledFromPrevious && (
+          <div className="rounded-md border border-border bg-secondary/50 p-4">
+            <p className="text-sm text-foreground/80">
+              Configuración basada en tu plan anterior. El nuevo plan también usa tu
+              progresión y feedback — ajustá lo que quieras y generá.
+            </p>
+          </div>
+        )}
+
         {/* Objetivo */}
         <section>
           <label className="flex items-center gap-2 text-lg font-semibold mb-3">

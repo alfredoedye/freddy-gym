@@ -54,16 +54,6 @@ function PlanFeedbackContent() {
   const [planSummary, setPlanSummary] = useState<PlanSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(true);
 
-  // Mensajes motivacionales durante la generación
-  const motivationalMessages = [
-    'Analizando tu progreso...',
-    'Ajustando intensidad según tu feedback...',
-    'Seleccionando ejercicios para tu nuevo plan...',
-    'Optimizando volumen y frecuencia...',
-    'Armando tu nuevo plan personalizado...',
-  ];
-  const [messageIndex, setMessageIndex] = useState(0);
-
   useEffect(() => {
     if (!planId) {
       router.push('/');
@@ -92,15 +82,6 @@ function PlanFeedbackContent() {
     fetchSummary();
   }, [planId, router]);
 
-  // Rotar mensajes durante la carga
-  useEffect(() => {
-    if (!loading) return;
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % motivationalMessages.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [loading]);
-
   const handleSubmit = async () => {
     if (!difficulty || !planId) return;
 
@@ -121,17 +102,16 @@ function PlanFeedbackContent() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Error al enviar feedback');
+        // Si el feedback ya estaba guardado (ej. un reintento tras un corte de
+        // red), no es un dead-end: seguir al paso de generación igual.
+        if (res.status !== 409) {
+          throw new Error(data.error || 'Error al enviar feedback');
+        }
       }
 
-      const data = await res.json();
-
-      // Redirigir al nuevo plan generado
-      if (data.newPlanId) {
-        router.push(`/plan/${data.newPlanId}`);
-      } else {
-        router.push('/');
-      }
+      // La generación del nuevo plan se hace en /plan/create (prefilled con
+      // este plan como base), que tiene UI de espera y reintento propia.
+      router.push(`/plan/create?previousPlanId=${planId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
       setLoading(false);
@@ -142,28 +122,6 @@ function PlanFeedbackContent() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
-  // Estado de carga mientras genera plan
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-        <div className="text-center max-w-sm">
-          <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 animate-spin rounded-full border-4 border-secondary border-t-primary" />
-            <div className="absolute inset-3 animate-ping rounded-full bg-accent" />
-            <span className="absolute inset-0 flex items-center justify-center text-3xl">🧠</span>
-          </div>
-          <h2 className="font-display text-xl font-bold text-foreground mb-2">
-            Generando nuevo plan
-          </h2>
-          <p className="text-base text-muted-foreground animate-pulse">
-            {motivationalMessages[messageIndex]}
-          </p>
-          <p className="text-sm text-muted-foreground/70 mt-4">Esto puede tomar 10-20 segundos</p>
-        </div>
       </div>
     );
   }
@@ -251,9 +209,9 @@ function PlanFeedbackContent() {
       </div>
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border">
-        <Button onClick={handleSubmit} disabled={!difficulty} size="lg" className="w-full">
-          Enviar feedback y generar nuevo plan
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-lg border-t border-border safe-bottom">
+        <Button onClick={handleSubmit} disabled={!difficulty || loading} size="lg" className="w-full">
+          {loading ? 'Guardando...' : 'Enviar feedback y continuar'}
         </Button>
       </div>
     </div>

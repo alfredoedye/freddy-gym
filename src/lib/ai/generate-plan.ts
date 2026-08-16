@@ -161,12 +161,18 @@ export async function generateTrainingPlan(
       .filter(Boolean)
       .join('\n');
 
-    // 5. Llamar al LLM con reintentos
+    // 5. Llamar al LLM con reintentos. Cada reintento incluye el error del
+    // intento anterior como corrección explícita — reenviar el prompt idéntico
+    // deja el éxito librado a la temperatura.
     let lastError = '';
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await callLLM(SYSTEM_PROMPT, userPrompt, {
+        const promptForAttempt = lastError
+          ? `${userPrompt}\n\nCORRECCIÓN — tu respuesta anterior fue rechazada por este motivo, no lo repitas: ${lastError}`
+          : userPrompt;
+
+        const response = await callLLM(SYSTEM_PROMPT, promptForAttempt, {
           temperature: 0.7,
           maxTokens: 4000,
           jsonMode: true,
