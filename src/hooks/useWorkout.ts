@@ -48,8 +48,10 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [sets, setSets] = useState<Map<string, WorkoutSetData[]>>(new Map());
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failedSets, setFailedSets] = useState<Set<string>>(new Set());
   const startTime = useRef<Date>(new Date());
+
+  const setKey = (exerciseId: string, setNumber: number) => `${exerciseId}:${setNumber}`;
 
   // Inicializar sets desde los existentes o crear vacíos
   useEffect(() => {
@@ -102,11 +104,49 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
     }
   }, [exercises, existingSets, previousSets]);
 
+  // Envía una serie a la API. No toca el estado optimista — eso lo maneja el caller
+  // (completeSet lo actualiza antes de llamar; retrySet ya lo tiene actualizado).
+  const saveSet = useCallback(
+    async (exerciseId: string, setNumber: number, reps: number, weight: number | null, rpe?: number | null) => {
+      const key = setKey(exerciseId, setNumber);
+      setSaving(true);
+      try {
+        const res = await fetch(`/api/workouts/${sessionId}/sets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            exerciseId,
+            setNumber,
+            reps,
+            weight,
+            completed: true,
+            rpe: rpe ?? null,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error('Error al guardar serie');
+        }
+
+        setFailedSets((prev) => {
+          if (!prev.has(key)) return prev;
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+      } catch (err) {
+        setFailedSets((prev) => new Set(prev).add(key));
+        console.error('Error guardando set:', err);
+      } finally {
+        setSaving(false);
+      }
+    },
+    [sessionId]
+  );
+
   // Completar una serie
   const completeSet = useCallback(
     async (exerciseId: string, setNumber: number, reps: number, weight: number | null, rpe?: number) => {
-      setError(null);
-
       // Actualización optimista
       setSets((prev) => {
         const newMap = new Map(prev);
@@ -133,34 +173,27 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
         navigator.vibrate(50);
       }
 
-      // Guardar en API
-      setSaving(true);
-      try {
-        const res = await fetch(`/api/workouts/${sessionId}/sets`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            exerciseId,
-            setNumber,
-            reps,
-            weight,
-            completed: true,
-            rpe: rpe ?? null,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error('Error al guardar serie');
-        }
-      } catch (err) {
-        setError('No se pudo guardar. Se reintentará.');
-        // Revertir optimista en caso de error severo — por ahora mantener local
-        console.error('Error guardando set:', err);
-      } finally {
-        setSaving(false);
-      }
+      await saveSet(exerciseId, setNumber, reps, weight, rpe ?? null);
     },
-    [sessionId]
+    [saveSet]
+  );
+
+  // Reintenta guardar una serie que falló, usando los valores que ya están en pantalla
+  // (la actualización optimista ya los tiene — no se piden de nuevo).
+  const retrySet = useCallback(
+    async (exerciseId: string, setNumber: number) => {
+      const exerciseSets = sets.get(exerciseId) || [];
+      const set = exerciseSets.find((s) => s.setNumber === setNumber);
+      if (!set) return;
+
+      await saveSet(exerciseId, setNumber, set.reps ?? 0, set.weight, set.rpe);
+    },
+    [sets, saveSet]
+  );
+
+  const isSetFailed = useCallback(
+    (exerciseId: string, setNumber: number) => failedSets.has(setKey(exerciseId, setNumber)),
+    [failedSets]
   );
 
   // Deshacer una serie
@@ -181,6 +214,16 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
 
         newMap.set(exerciseId, exerciseSets);
         return newMap;
+      });
+
+      // Si la serie deshecha había fallado al guardar, limpiar ese aviso —
+      // al completarla de nuevo se reintenta el guardado desde cero.
+      const key = setKey(exerciseId, setNumber);
+      setFailedSets((prev) => {
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
       });
     },
     []
@@ -217,6 +260,17 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
         (s) => s.exerciseId === exerciseId && s.setNumber === setNumber
       );
       return prevSet?.weight ?? null;
+    },
+    [previousSets]
+  );
+
+  // Reps anteriores para un ejercicio y serie — mismo criterio que getPreviousWeight
+  const getPreviousReps = useCallback(
+    (exerciseId: string, setNumber: number): number | null => {
+      const prevSet = previousSets.find(
+        (s) => s.exerciseId === exerciseId && s.setNumber === setNumber
+      );
+      return prevSet?.reps ?? null;
     },
     [previousSets]
   );
@@ -281,12 +335,12 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
     currentExercise: exercises[currentExerciseIndex] || null,
     sets,
     saving,
-    error,
     isWorkoutComplete,
     isCurrentExerciseComplete,
 
     // Acciones
     completeSet,
+    retrySet,
     undoSet,
     nextExercise,
     prevExercise,
@@ -295,6 +349,8 @@ export function useWorkout({ sessionId, exercises, existingSets, previousSets = 
     // Consultas
     getExerciseProgress,
     getPreviousWeight,
+    getPreviousReps,
+    isSetFailed,
 
     // Stats
     totalVolume,

@@ -44,12 +44,15 @@ export function WorkoutClient({
     isWorkoutComplete,
     isCurrentExerciseComplete,
     completeSet,
+    retrySet,
     undoSet,
     nextExercise,
     prevExercise,
     goToExercise,
     getExerciseProgress,
     getPreviousWeight,
+    getPreviousReps,
+    isSetFailed,
     totalSetsCompleted,
     totalSetsPlanned,
     formattedElapsedTime,
@@ -128,6 +131,17 @@ export function WorkoutClient({
         onJumpTo={goToExercise}
       />
 
+      {/* Timer de descanso — se renderiza antes que la ficha del ejercicio para que,
+          cuando está activo, sus controles (saltar, ±15s) queden arriba del fold en
+          vez de debajo de la ficha completa (GIF + info + notas). Cuando no está
+          activo, RestTimer no renderiza nada, así que esto no afecta el layout normal. */}
+      <RestTimer
+        duration={currentExercise.restSeconds}
+        isActive={timerActive}
+        onComplete={handleTimerDone}
+        onSkip={handleTimerDone}
+      />
+
       {/* Ejercicio actual */}
       <ExerciseCard
         exercise={currentExercise.exercise}
@@ -135,14 +149,6 @@ export function WorkoutClient({
         setsInfo={`${currentExercise.sets} × ${currentExercise.repsMin}-${currentExercise.repsMax}`}
         restSeconds={currentExercise.restSeconds}
         notes={currentExercise.notes}
-      />
-
-      {/* Timer de descanso */}
-      <RestTimer
-        duration={currentExercise.restSeconds}
-        isActive={timerActive}
-        onComplete={handleTimerDone}
-        onSkip={handleTimerDone}
       />
 
       {/* Series */}
@@ -170,13 +176,16 @@ export function WorkoutClient({
               currentReps={set.reps}
               currentWeight={set.weight}
               previousWeight={getPreviousWeight(currentExercise.exerciseId, set.setNumber)}
+              previousReps={getPreviousReps(currentExercise.exerciseId, set.setNumber)}
               completed={set.completed}
               rpe={set.rpe}
               isBodyweight={isBodyweightExercise(currentExercise.exercise.equipment)}
+              isFailed={isSetFailed(currentExercise.exerciseId, set.setNumber)}
               onComplete={(reps, weight, rpe) =>
                 handleCompleteSet(currentExercise.exerciseId, set.setNumber, reps, weight, rpe)
               }
               onUndo={() => undoSet(currentExercise.exerciseId, set.setNumber)}
+              onRetry={() => retrySet(currentExercise.exerciseId, set.setNumber)}
               autoFocus={shouldFocus}
             />
           );

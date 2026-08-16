@@ -56,7 +56,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
         {/* Nombre e info */}
         <div className="text-center mb-3">
           {phase !== 'MAIN' && (
-            <span className="inline-block text-xs font-semibold text-accent-text mb-1">
+            <span className="inline-block text-xs font-semibold text-muted-foreground mb-1">
               {PHASE_LABELS[phase]}
             </span>
           )}
@@ -64,13 +64,13 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
           <h2 className="font-display text-xl font-bold leading-tight mb-1">{exercise.name}</h2>
 
           {/* Series × Reps */}
-          <p className="text-lg text-accent-text font-semibold font-mono">
+          <p className="text-lg text-foreground font-semibold font-mono">
             {setsInfo} · {restSeconds}s descanso
           </p>
 
           {/* Badges */}
           <div className="flex flex-wrap justify-center gap-2 mt-2">
-            <span className="inline-flex items-center gap-1 text-xs font-medium bg-accent text-accent-text px-2 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary text-muted-foreground px-2 py-1 rounded-full">
               <Target className="w-3 h-3" />
               {exercise.target}
             </span>
@@ -83,8 +83,8 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
 
         {/* Notas del plan */}
         {notes && (
-          <div className="bg-accent border border-primary/20 rounded-lg p-3 mb-3">
-            <p className="text-sm text-accent-text">💡 {notes}</p>
+          <div className="bg-secondary/50 rounded-lg p-3 mb-3">
+            <p className="text-sm text-foreground/80">💡 {notes}</p>
           </div>
         )}
 
