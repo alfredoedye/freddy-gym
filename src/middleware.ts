@@ -37,8 +37,14 @@ export async function middleware(request: NextRequest) {
     secret: process.env.NEXTAUTH_SECRET,
   });
 
-  // Si no está autenticado y no es ruta pública → login
+  // Si no está autenticado y no es ruta pública → login.
+  // Las rutas de API responden 401 JSON en vez de un redirect: un fetch()
+  // del cliente seguiría el 302 hasta el HTML del login y el error real
+  // (sesión expirada) quedaría enmascarado como un fallo de parseo.
   if (!token && !isPublic) {
+    if (pathname.startsWith('/api')) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);
@@ -49,9 +55,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // Si está autenticado, verificar si tiene perfil
-  // (usamos una cookie/header para cachear esto y evitar DB hits en cada request)
-  if (token && !SKIP_PROFILE_CHECK.some((path) => pathname.startsWith(path))) {
+  // Si está autenticado, verificar si tiene perfil. Solo aplica a páginas:
+  // redirigir un fetch de API a /onboarding devolvería HTML donde el cliente
+  // espera JSON (las rutas de API validan sesión por su cuenta).
+  if (
+    token &&
+    !pathname.startsWith('/api') &&
+    !SKIP_PROFILE_CHECK.some((path) => pathname.startsWith(path))
+  ) {
     const hasProfile = token.hasProfile as boolean | undefined;
 
     if (hasProfile === false) {

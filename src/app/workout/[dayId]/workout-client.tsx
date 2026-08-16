@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkout, type PlanExerciseData, type WorkoutSetData } from '@/hooks/useWorkout';
 import { isBodyweightExercise } from '@/lib/exercise-utils';
@@ -8,7 +8,7 @@ import { WorkoutHeader } from '@/components/workout/workout-header';
 import { ExerciseProgress } from '@/components/workout/exercise-progress';
 import { ExerciseCard } from '@/components/workout/exercise-card';
 import { SetRow } from '@/components/workout/set-row';
-import { RestTimer } from '@/components/workout/rest-timer';
+import { RestTimer, readStoredRestTimer } from '@/components/workout/rest-timer';
 import { ChevronRight } from 'lucide-react';
 
 interface WorkoutClientProps {
@@ -21,6 +21,7 @@ interface WorkoutClientProps {
   session: {
     id: string;
     weekNumber: number;
+    startedAt: string;
   };
   existingSets: WorkoutSetData[];
   previousSets: WorkoutSetData[];
@@ -35,6 +36,14 @@ export function WorkoutClient({
 }: WorkoutClientProps) {
   const router = useRouter();
   const [timerActive, setTimerActive] = useState(false);
+
+  // Retomar un descanso que estaba corriendo antes de un refresh — el deadline
+  // persiste en sessionStorage (ver RestTimer).
+  useEffect(() => {
+    if (readStoredRestTimer(session.id)) {
+      setTimerActive(true);
+    }
+  }, [session.id]);
 
   const {
     currentExerciseIndex,
@@ -58,6 +67,7 @@ export function WorkoutClient({
     formattedElapsedTime,
   } = useWorkout({
     sessionId: session.id,
+    startedAt: session.startedAt,
     exercises,
     existingSets,
     previousSets,
@@ -138,6 +148,7 @@ export function WorkoutClient({
       <RestTimer
         duration={currentExercise.restSeconds}
         isActive={timerActive}
+        sessionId={session.id}
         onComplete={handleTimerDone}
         onSkip={handleTimerDone}
       />

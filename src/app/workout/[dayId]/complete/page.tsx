@@ -22,32 +22,41 @@ export default function WorkoutCompletePage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get('sessionId');
   const [stats, setStats] = useState<WorkoutStats | null>(null);
+  const [completeError, setCompleteError] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Marcar workout como completado y obtener stats
-  useEffect(() => {
+  // Marcar workout como completado y obtener stats. Si este PATCH falla en
+  // silencio, la sesión queda incompleta en el servidor (no cuenta para
+  // progreso ni rachas) aunque la pantalla diga "¡Rutina completada!" — por
+  // eso el error se muestra con reintento en vez de solo loguearse.
+  const completeWorkout = async () => {
     if (!sessionId) return;
+    setCompleteError(false);
 
-    const completeWorkout = async () => {
-      try {
-        const res = await fetch(`/api/workouts/${sessionId}/complete`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ notes: '' }),
-        });
+    try {
+      const res = await fetch(`/api/workouts/${sessionId}/complete`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: '' }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats);
-        }
-      } catch (err) {
-        console.error('Error completando workout:', err);
+      if (!res.ok) {
+        throw new Error('Error al completar workout');
       }
-    };
 
+      const data = await res.json();
+      setStats(data.stats);
+    } catch (err) {
+      console.error('Error completando workout:', err);
+      setCompleteError(true);
+    }
+  };
+
+  useEffect(() => {
     completeWorkout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
   // Guardar notas
@@ -81,6 +90,21 @@ export default function WorkoutCompletePage() {
         <p className="text-muted-foreground text-center text-lg mb-8">
           Excelente trabajo. Cada sesión cuenta.
         </p>
+
+        {/* Aviso de guardado fallido — la sesión aún no cuenta en el servidor */}
+        {completeError && (
+          <div className="w-full max-w-sm mb-8 flex items-center justify-between gap-2 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/30">
+            <span className="text-sm text-destructive">
+              No se pudo registrar la rutina como completada.
+            </span>
+            <button
+              onClick={completeWorkout}
+              className="text-sm font-semibold text-destructive active:opacity-70 flex-shrink-0"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
 
         {/* Stats cards */}
         {stats && (

@@ -6,69 +6,151 @@ import { SkipForward, Plus, Minus } from 'lucide-react';
 interface RestTimerProps {
   duration: number; // segundos configurados
   isActive: boolean;
+  sessionId: string;
   onComplete: () => void;
   onSkip: () => void;
 }
 
-// Componente insignia — el anillo de descanso (ver DESIGN.md § Components → Rest Timer Ring)
-export function RestTimer({ duration, isActive, onComplete, onSkip }: RestTimerProps) {
-  const [timeRemaining, setTimeRemaining] = useState(duration);
+// Clave de sessionStorage donde vive el deadline del descanso en curso.
+// Exportada para que workout-client pueda reactivar el timer tras un refresh.
+export function restTimerStorageKey(sessionId: string) {
+  return `gymapp:restTimer:${sessionId}`;
+}
+
+interface StoredTimer {
+  deadline: number; // epoch ms
+  adjustedDuration: number; // segundos, para el progreso del anillo
+}
+
+export function readStoredRestTimer(sessionId: string): StoredTimer | null {
+  try {
+    const raw = sessionStorage.getItem(restTimerStorageKey(sessionId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredTimer;
+    if (typeof parsed.deadline !== 'number' || parsed.deadline <= Date.now()) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function storeRestTimer(sessionId: string, timer: StoredTimer) {
+  try {
+    sessionStorage.setItem(restTimerStorageKey(sessionId), JSON.stringify(timer));
+  } catch {
+    // Storage lleno o bloqueado — el timer sigue funcionando, solo no sobrevive un refresh.
+  }
+}
+
+function clearStoredRestTimer(sessionId: string) {
+  try {
+    sessionStorage.removeItem(restTimerStorageKey(sessionId));
+  } catch {
+    // Ignorar
+  }
+}
+
+// Componente insignia — el anillo de descanso (ver DESIGN.md § Components → Rest Timer Ring).
+// El tiempo restante se deriva de un deadline (epoch ms), no de un contador
+// decremental: los browsers móviles suspenden los setInterval con la pantalla
+// bloqueada — exactamente lo que hace la gente entre series — y un contador
+// mostraría más descanso restante del real al volver. El deadline se persiste
+// en sessionStorage para sobrevivir un refresh.
+export function RestTimer({ duration, isActive, sessionId, onComplete, onSkip }: RestTimerProps) {
+  const [deadline, setDeadline] = useState<number | null>(null);
   const [adjustedDuration, setAdjustedDuration] = useState(duration);
-  const [running, setRunning] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(duration);
   const [justFinished, setJustFinished] = useState(false);
 
-  // Iniciar timer cuando se activa
+  // Al activarse: retomar el deadline persistido (refresh a mitad de descanso)
+  // o crear uno nuevo.
   useEffect(() => {
-    if (isActive) {
-      setTimeRemaining(duration);
-      setAdjustedDuration(duration);
-      setRunning(true);
-      setJustFinished(false);
-    } else {
-      setRunning(false);
+    if (!isActive) {
+      setDeadline(null);
+      return;
     }
-  }, [isActive, duration]);
 
-  // Countdown
+    const stored = readStoredRestTimer(sessionId);
+    if (stored) {
+      setDeadline(stored.deadline);
+      setAdjustedDuration(stored.adjustedDuration);
+      setTimeRemaining(Math.ceil((stored.deadline - Date.now()) / 1000));
+    } else {
+      const newDeadline = Date.now() + duration * 1000;
+      setDeadline(newDeadline);
+      setAdjustedDuration(duration);
+      setTimeRemaining(duration);
+      storeRestTimer(sessionId, { deadline: newDeadline, adjustedDuration: duration });
+    }
+    setJustFinished(false);
+  }, [isActive, duration, sessionId]);
+
+  // Tick: derivar el restante del reloj de pared. También se recalcula al
+  // volver del background (visibilitychange), donde el interval estuvo suspendido.
   useEffect(() => {
-    if (!running || timeRemaining <= 0) return;
+    if (!isActive || deadline === null) return;
 
-    const interval = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          setRunning(false);
-          setJustFinished(true);
-          // Vibración al terminar
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate([200, 100, 200]);
-          }
-          onComplete();
-          return 0;
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setTimeRemaining(remaining);
+
+      if (remaining <= 0) {
+        setJustFinished(true);
+        clearStoredRestTimer(sessionId);
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
         }
-        return prev - 1;
-      });
-    }, 1000);
+        onComplete();
+      }
+    };
 
-    return () => clearInterval(interval);
-  }, [running, timeRemaining, onComplete]);
+    tick();
+    const interval = setInterval(tick, 1000);
+    document.addEventListener('visibilitychange', tick);
 
-  // Ajustar tiempo
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', tick);
+    };
+  }, [isActive, deadline, sessionId, onComplete]);
+
+  // Ajustar tiempo moviendo el deadline
   const addTime = useCallback(() => {
-    setTimeRemaining((prev) => prev + 15);
-    setAdjustedDuration((prev) => prev + 15);
-  }, []);
+    setDeadline((prev) => {
+      if (prev === null) return prev;
+      const next = prev + 15_000;
+      setAdjustedDuration((d) => {
+        storeRestTimer(sessionId, { deadline: next, adjustedDuration: d + 15 });
+        return d + 15;
+      });
+      return next;
+    });
+  }, [sessionId]);
 
   const subtractTime = useCallback(() => {
-    setTimeRemaining((prev) => Math.max(0, prev - 15));
-    setAdjustedDuration((prev) => Math.max(15, prev - 15));
-  }, []);
+    setDeadline((prev) => {
+      if (prev === null) return prev;
+      const next = Math.max(Date.now(), prev - 15_000);
+      setAdjustedDuration((d) => {
+        const nextDuration = Math.max(15, d - 15);
+        storeRestTimer(sessionId, { deadline: next, adjustedDuration: nextDuration });
+        return nextDuration;
+      });
+      return next;
+    });
+  }, [sessionId]);
+
+  const handleSkip = useCallback(() => {
+    clearStoredRestTimer(sessionId);
+    onSkip();
+  }, [sessionId, onSkip]);
 
   if (!isActive) return null;
 
   // Calcular progreso para el anillo SVG
   const progress = adjustedDuration > 0 ? timeRemaining / adjustedDuration : 0;
   const circumference = 2 * Math.PI * 54; // radio 54
-  const strokeDashoffset = circumference * (1 - progress);
+  const strokeDashoffset = circumference * (1 - Math.min(1, progress));
 
   // Formatear tiempo
   const minutes = Math.floor(timeRemaining / 60);
@@ -134,7 +216,7 @@ export function RestTimer({ duration, isActive, onComplete, onSkip }: RestTimerP
 
         {/* Saltar */}
         <button
-          onClick={onSkip}
+          onClick={handleSkip}
           className="h-12 px-6 rounded-md bg-card border border-border flex items-center gap-2 font-semibold text-base active:bg-secondary transition-colors duration-150"
         >
           <SkipForward className="w-5 h-5" />

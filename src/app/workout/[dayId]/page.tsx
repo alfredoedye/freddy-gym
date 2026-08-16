@@ -163,6 +163,7 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
       session={{
         id: workoutSession.id,
         weekNumber,
+        startedAt: workoutSession.startedAt.toISOString(),
       }}
       existingSets={existingSets}
       previousSets={previousSets}
