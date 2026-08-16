@@ -45,7 +45,7 @@ export function WorkoutHeader({ dayName, elapsedTime, progress, onBack, hasStart
           <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
             <Clock className="w-4 h-4" />
             <span>{elapsedTime}</span>
-            <span className="text-xs bg-accent text-accent-text px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full font-semibold">
               {progress}
             </span>
           </div>

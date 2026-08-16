@@ -29,11 +29,11 @@ export function ExerciseProgress({ exercises, currentIndex, getProgress, onJumpT
             <button
               key={exercise.exerciseId}
               onClick={() => onJumpTo(index)}
-              className={`min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center text-xs font-bold font-mono transition-all duration-200 ease-out-quint active:scale-95 ${
+              className={`min-w-[36px] min-h-[36px] rounded-full flex items-center justify-center text-xs font-bold font-mono transition-transform duration-200 ease-out-quint active:scale-95 ${
                 isCurrent
                   ? 'bg-primary text-primary-foreground scale-110 shadow-volt-glow'
                   : isComplete
-                    ? 'bg-primary/60 text-primary-foreground'
+                    ? 'bg-secondary text-primary border border-primary/30'
                     : 'bg-secondary text-muted-foreground'
               }`}
               aria-label={`${exercise.name} - ${completed}/${total} series`}

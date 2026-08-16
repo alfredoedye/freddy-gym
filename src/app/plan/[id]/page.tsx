@@ -247,22 +247,22 @@ export default function PlanViewPage() {
         {/* Metadata del plan */}
         <div className="grid grid-cols-2 gap-3">
           <MetaCard
-            icon={<Target className="w-4 h-4 text-accent-text" />}
+            icon={<Target className="w-4 h-4 text-muted-foreground" />}
             label="Objetivo"
             value={goalLabels[plan.goal] || plan.goal}
           />
           <MetaCard
-            icon={<Calendar className="w-4 h-4 text-accent-text" />}
+            icon={<Calendar className="w-4 h-4 text-muted-foreground" />}
             label="Duración"
             value={`${plan.durationWeeks} semanas`}
           />
           <MetaCard
-            icon={<Dumbbell className="w-4 h-4 text-accent-text" />}
+            icon={<Dumbbell className="w-4 h-4 text-muted-foreground" />}
             label="Frecuencia"
             value={`${plan.daysPerWeek} días/sem`}
           />
           <MetaCard
-            icon={<Clock className="w-4 h-4 text-accent-text" />}
+            icon={<Clock className="w-4 h-4 text-muted-foreground" />}
             label="Split"
             value={splitLabels[plan.split] || plan.split}
           />
@@ -441,7 +441,7 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
           {' · '}
           {ex.restSeconds}s descanso
         </p>
-        {ex.notes && <p className="text-xs text-accent-text mt-0.5">💡 {ex.notes}</p>}
+        {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
       </div>
     </div>
   );
