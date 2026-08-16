@@ -45,8 +45,21 @@ export async function savePlanToDatabase(
   input: GeneratePlanInput,
   generatedPlan: GeneratedPlan
 ): Promise<SavedPlan> {
-  const savedPlan = await prisma.$transaction(async (tx) => {
-    // 1. Crear el plan principal
+  // Transacción corta y de pocas idas a la DB: el timeout por default de las
+  // transacciones interactivas de Prisma es 5s, y este guardado corre justo
+  // después de 30-60s de generación LLM ya pagada — no puede darse el lujo de
+  // vencerse por hacer un round trip por cada día del plan.
+  const planId = await prisma.$transaction(async (tx) => {
+    // 1. Invariante de un solo plan ACTIVE: pausar cualquier otro plan activo
+    // antes de crear el nuevo. Sin esto, dos generaciones (ej. un reintento
+    // tras un corte de red) dejan dos planes ACTIVE y el dashboard elige uno
+    // al azar.
+    await tx.plan.updateMany({
+      where: { userId, status: 'ACTIVE' },
+      data: { status: 'PAUSED' },
+    });
+
+    // 2. Crear plan + días + ejercicios en un solo create anidado
     const plan = await tx.plan.create({
       data: {
         userId,
@@ -56,36 +69,32 @@ export async function savePlanToDatabase(
         daysPerWeek: input.daysPerWeek,
         split: input.split,
         status: 'ACTIVE',
+        planDays: {
+          create: generatedPlan.days.map((day) => ({
+            dayNumber: day.dayNumber,
+            name: day.name,
+            isRest: day.isRest,
+            exercises: {
+              create: day.exercises.map((exercise, index) => ({
+                exerciseId: exercise.exerciseId,
+                order: index + 1,
+                phase: exercise.phase,
+                sets: exercise.sets,
+                repsMin: exercise.repsMin,
+                repsMax: exercise.repsMax,
+                restSeconds: exercise.restSeconds,
+                notes: exercise.notes || null,
+              })),
+            },
+          })),
+        },
       },
+      select: { id: true },
     });
 
-    // 2. Crear los días del plan con sus ejercicios
-    for (const day of generatedPlan.days) {
-      await tx.planDay.create({
-        data: {
-          planId: plan.id,
-          dayNumber: day.dayNumber,
-          name: day.name,
-          isRest: day.isRest,
-          exercises: {
-            create: day.exercises.map((exercise, index) => ({
-              exerciseId: exercise.exerciseId,
-              order: index + 1,
-              phase: exercise.phase,
-              sets: exercise.sets,
-              repsMin: exercise.repsMin,
-              repsMax: exercise.repsMax,
-              restSeconds: exercise.restSeconds,
-              notes: exercise.notes || null,
-            })),
-          },
-        },
-      });
-    }
-
-    // 3. Si hay plan anterior activo, marcarlo como completado.
-    // updateMany + userId (en vez de update por id) para que esto sea un no-op
-    // si por algún motivo previousPlanId no pertenece a este usuario.
+    // 3. Si hay plan anterior, marcarlo como completado (pisa el PAUSED del
+    // paso 1). updateMany + userId para que sea un no-op si previousPlanId
+    // no pertenece a este usuario.
     if (input.previousPlanId) {
       await tx.plan.updateMany({
         where: { id: input.previousPlanId, userId },
@@ -93,32 +102,34 @@ export async function savePlanToDatabase(
       });
     }
 
-    // 4. Retornar el plan completo con relaciones
-    return tx.plan.findUnique({
-      where: { id: plan.id },
-      include: {
-        planDays: {
-          orderBy: { dayNumber: 'asc' },
-          include: {
-            exercises: {
-              orderBy: { order: 'asc' },
-              include: {
-                exercise: {
-                  select: {
-                    id: true,
-                    name: true,
-                    imageUrl: true,
-                    gifUrl: true,
-                    target: true,
-                    equipment: true,
-                  },
+    return plan.id;
+  });
+
+  // 4. Leer el plan completo con relaciones fuera de la transacción
+  const savedPlan = await prisma.plan.findUnique({
+    where: { id: planId },
+    include: {
+      planDays: {
+        orderBy: { dayNumber: 'asc' },
+        include: {
+          exercises: {
+            orderBy: { order: 'asc' },
+            include: {
+              exercise: {
+                select: {
+                  id: true,
+                  name: true,
+                  imageUrl: true,
+                  gifUrl: true,
+                  target: true,
+                  equipment: true,
                 },
               },
             },
           },
         },
       },
-    });
+    },
   });
 
   if (!savedPlan) {

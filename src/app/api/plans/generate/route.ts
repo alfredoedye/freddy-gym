@@ -15,6 +15,15 @@ import { GeneratePlanRequestSchema } from '@/lib/ai/schemas';
 // en el peor caso puede superar el timeout por default de las funciones de Vercel.
 export const maxDuration = 120;
 
+// Guard de idempotencia: si el usuario ya tiene un plan creado hace menos de
+// esto, un nuevo POST devuelve ese plan en vez de generar (y facturar) otro.
+// Cubre el caso real de móvil: el fetch muere ("Load failed") pero el server
+// terminó y guardó — el reintento del usuario no debe duplicar el plan.
+const RECENT_PLAN_WINDOW_MS = 2 * 60 * 1000;
+
+// Tope diario de generaciones por usuario — control de costo del LLM.
+const MAX_GENERATIONS_PER_DAY = 10;
+
 export async function POST(request: NextRequest) {
   try {
     // 1. Verificar autenticación
@@ -24,6 +33,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'No autorizado. Iniciá sesión para continuar.' },
         { status: 401 }
+      );
+    }
+
+    // 1b. Idempotencia y límite de costo
+    const recentPlan = await prisma.plan.findFirst({
+      where: {
+        userId: session.user.id,
+        createdAt: { gt: new Date(Date.now() - RECENT_PLAN_WINDOW_MS) },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
+    if (recentPlan) {
+      return NextResponse.json(
+        {
+          error: 'Ya generaste un plan hace un momento.',
+          existingPlanId: recentPlan.id,
+        },
+        { status: 409 }
+      );
+    }
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const plansToday = await prisma.plan.count({
+      where: { userId: session.user.id, createdAt: { gte: startOfDay } },
+    });
+
+    if (plansToday >= MAX_GENERATIONS_PER_DAY) {
+      return NextResponse.json(
+        { error: 'Alcanzaste el límite de planes generados por hoy. Probá de nuevo mañana.' },
+        { status: 429 }
       );
     }
 

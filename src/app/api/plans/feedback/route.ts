@@ -3,16 +3,19 @@ import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from '@/lib/auth';
-import { generateTrainingPlan } from '@/lib/ai/generate-plan';
-import { savePlanToDatabase } from '@/lib/ai/save-plan';
 
 const FeedbackSchema = z.object({
   planId: z.string().min(1),
   difficulty: z.enum(['TOO_EASY', 'EASY', 'JUST_RIGHT', 'HARD', 'TOO_HARD']),
-  notes: z.string().optional(),
-  muscleGroupFeedback: z.array(z.string()).optional(),
+  notes: z.string().max(2000).optional(),
+  muscleGroupFeedback: z.array(z.string().max(50)).max(20).optional(),
 });
 
+// Esta ruta solo guarda el feedback y cierra el plan — responde rápido.
+// La generación del plan siguiente (30s+ de LLM) se dispara aparte desde
+// /plan/create con previousPlanId: si la generación falla o se corta la
+// conexión, el feedback ya quedó guardado y el usuario tiene una UI de
+// reintento, en vez de aterrizar en un dashboard vacío sin explicación.
 export async function POST(request: NextRequest) {
   try {
     // Verificar autenticación
@@ -85,51 +88,9 @@ export async function POST(request: NextRequest) {
       }),
     ]);
 
-    // Generar nuevo plan basado en el anterior
-    let newPlanId: string | null = null;
-
-    try {
-      // Obtener perfil del usuario para la generación
-      const profile = await prisma.profile.findUnique({
-        where: { userId: session.user.id },
-      });
-
-      const generatedPlan = await generateTrainingPlan({
-        userId: session.user.id,
-        goal: plan.goal,
-        durationWeeks: plan.durationWeeks,
-        daysPerWeek: plan.daysPerWeek,
-        split: plan.split,
-        previousPlanId: planId,
-      });
-
-      if (!generatedPlan.success) {
-        throw new Error(generatedPlan.error);
-      }
-
-      const savedPlan = await savePlanToDatabase(
-        session.user.id,
-        {
-          userId: session.user.id,
-          goal: plan.goal,
-          durationWeeks: plan.durationWeeks,
-          daysPerWeek: plan.daysPerWeek,
-          split: plan.split,
-        },
-        generatedPlan.plan
-      );
-
-      newPlanId = savedPlan.id;
-    } catch (aiError) {
-      console.error('Error generando nuevo plan:', aiError);
-      // No fallar la request — el feedback ya se guardó
-      // El usuario puede generar un plan manualmente después
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Feedback guardado correctamente',
-      newPlanId,
     });
   } catch (error) {
     console.error('Error en POST /api/plans/feedback:', error);
