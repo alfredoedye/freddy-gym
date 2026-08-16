@@ -12,10 +12,9 @@ interface SetRowProps {
   previousWeight: number | null;
   previousReps: number | null;
   completed: boolean;
-  rpe: number | null;
   isBodyweight?: boolean;
   isFailed?: boolean;
-  onComplete: (reps: number, weight: number | null, rpe?: number) => void;
+  onComplete: (reps: number, weight: number | null) => void;
   onUndo: () => void;
   onRetry?: () => void;
   autoFocus?: boolean;
@@ -30,7 +29,6 @@ export function SetRow({
   previousWeight,
   previousReps,
   completed,
-  rpe,
   isBodyweight = false,
   isFailed = false,
   onComplete,
@@ -42,8 +40,6 @@ export function SetRow({
   const [weight, setWeight] = useState<string>(
     currentWeight?.toString() || previousWeight?.toString() || ''
   );
-  const [showRpe, setShowRpe] = useState(false);
-  const [selectedRpe, setSelectedRpe] = useState<number | null>(rpe);
   const repsRef = useRef<HTMLInputElement>(null);
   const weightRef = useRef<HTMLInputElement>(null);
 
@@ -67,7 +63,7 @@ export function SetRow({
       return;
     }
 
-    onComplete(repsNum, weightNum, selectedRpe ?? undefined);
+    onComplete(repsNum, weightNum);
   };
 
   const handleRepsKeyDown = (e: React.KeyboardEvent) => {
@@ -167,7 +163,7 @@ export function SetRow({
           {completed ? (
             <button
               onClick={onUndo}
-              className="w-12 h-12 rounded-full flex items-center justify-center bg-secondary text-primary border border-primary/30 active:bg-muted transition-colors duration-150"
+              className="w-12 h-12 rounded-full flex items-center justify-center bg-secondary text-foreground/70 border border-border active:bg-muted transition-colors duration-150"
               aria-label="Deshacer serie"
             >
               <Check className="w-6 h-6" />
@@ -182,26 +178,6 @@ export function SetRow({
             </button>
           )}
         </div>
-
-        {/* RPE (selector opcional) */}
-        {showRpe && !completed && (
-          <div className="absolute right-0 top-full mt-1 z-10 bg-card border border-border rounded-lg p-2 flex gap-1">
-            {[6, 7, 8, 9, 10].map((val) => (
-              <button
-                key={val}
-                onClick={() => {
-                  setSelectedRpe(val);
-                  setShowRpe(false);
-                }}
-                className={`w-8 h-8 rounded-full text-xs font-bold font-mono ${
-                  selectedRpe === val ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'
-                }`}
-              >
-                {val}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Aviso de guardado fallido — la serie sigue marcada como completa en pantalla

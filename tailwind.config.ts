@@ -94,8 +94,12 @@ const config: Config = {
         'touch': '48px',
         'touch-lg': '56px',
       },
-      // Mínimos de altura para elementos interactivos
+      // Mínimos de altura/ancho para elementos interactivos
       minHeight: {
+        'touch': '48px',
+        'touch-lg': '56px',
+      },
+      minWidth: {
         'touch': '48px',
         'touch-lg': '56px',
       },
@@ -119,10 +123,16 @@ const config: Config = {
           '50%': { transform: 'scale(1.15)', opacity: '0.7' },
           '100%': { transform: 'scale(1)', opacity: '1' },
         },
+        'celebrate-in': {
+          '0%': { transform: 'scale(0.5)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '1' },
+        },
       },
       animation: {
         // Único momento coreografiado fuera de las celebraciones (ver DESIGN.md § Rest Timer Ring)
         'pulse-once': 'pulse-once 300ms cubic-bezier(0.16, 1, 0.3, 1) 1',
+        // Entrada del emoji en la pantalla de rutina completada — un solo disparo, sin rebote
+        'celebrate-in': 'celebrate-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 1',
       },
     },
   },
