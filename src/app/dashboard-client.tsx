@@ -185,6 +185,13 @@ export function DashboardClient({
           </div>
         </div>
       )}
+
+      {/* Versión de la app — generada en build time (ver next.config.js) */}
+      <footer className="px-4 pt-2 pb-4 text-center">
+        <p className="text-xs font-mono text-muted-foreground/60">
+          GymApp {process.env.NEXT_PUBLIC_APP_VERSION || 'dev'}
+        </p>
+      </footer>
     </div>
   );
 }
