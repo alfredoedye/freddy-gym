@@ -199,6 +199,10 @@ model WorkoutSession {
   planDay PlanDay?    @relation(fields: [planDayId], references: [id])
   sets    WorkoutSet[]
 
+  // Una sola sesión por usuario/día/semana — evita duplicados por doble-tap o
+  // cargas simultáneas de la página de entrenamiento (los NULL no colisionan,
+  // así que las sesiones libres sin planDay no se ven afectadas).
+  @@unique([userId, planDayId, weekNumber], name: "userId_planDayId_weekNumber")
   @@index([userId])
   @@index([planDayId])
   @@index([startedAt])

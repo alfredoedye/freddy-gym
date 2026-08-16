@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { Prisma } from '@prisma/client';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
@@ -40,30 +41,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Plan no encontrado' }, { status: 404 });
     }
 
-    // Buscar sesión existente no completada
-    const existing = await prisma.workoutSession.findFirst({
-      where: {
-        userId: session.user.id,
-        planDayId,
-        weekNumber,
-        completedAt: null,
-      },
+    // Reusar la sesión de este día/semana si existe; el índice único
+    // userId+planDayId+weekNumber protege contra creaciones simultáneas
+    // (la que pierde la carrera recibe P2002 y relee la fila ganadora).
+    const sessionKey = { userId: session.user.id, planDayId, weekNumber };
+
+    const existing = await prisma.workoutSession.findUnique({
+      where: { userId_planDayId_weekNumber: sessionKey },
     });
 
     if (existing) {
       return NextResponse.json({ session: existing });
     }
 
-    // Crear nueva sesión
-    const workoutSession = await prisma.workoutSession.create({
-      data: {
-        userId: session.user.id,
-        planDayId,
-        weekNumber,
-      },
-    });
-
-    return NextResponse.json({ session: workoutSession }, { status: 201 });
+    try {
+      const workoutSession = await prisma.workoutSession.create({ data: sessionKey });
+      return NextResponse.json({ session: workoutSession }, { status: 201 });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        const winner = await prisma.workoutSession.findUnique({
+          where: { userId_planDayId_weekNumber: sessionKey },
+        });
+        if (winner) {
+          return NextResponse.json({ session: winner });
+        }
+      }
+      throw error;
+    }
   } catch (error) {
     console.error('Error creando workout session:', error);
     return NextResponse.json(
