@@ -39,7 +39,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
         {mediaUrl && (
           <button
             onClick={() => setShowGifModal(true)}
-            className="mx-auto mb-4 block w-full max-w-[280px]"
+            className="mx-auto mb-4 block w-full max-w-[min(88vw,340px)]"
             aria-label="Ver ejercicio en pantalla completa"
           >
             <div className="aspect-square w-full overflow-hidden rounded-lg border border-border bg-secondary">
@@ -91,7 +91,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
         {/* Toggle instrucciones */}
         <button
           onClick={() => setShowInstructions(!showInstructions)}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 min-h-[40px]"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 min-h-touch"
         >
           {showInstructions ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           {showInstructions ? 'Ocultar instrucciones' : 'Ver instrucciones'}
@@ -116,7 +116,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
           <div className="relative max-w-sm w-full">
             <button
               onClick={() => setShowGifModal(false)}
-              className="absolute -top-12 right-0 w-10 h-10 flex items-center justify-center rounded-full bg-white/20 text-white"
+              className="absolute -top-12 right-0 w-12 h-12 flex items-center justify-center rounded-full bg-white/20 text-white"
               aria-label="Cerrar"
             >
               <X className="w-6 h-6" />

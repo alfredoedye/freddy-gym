@@ -73,7 +73,7 @@ export default function WorkoutCompletePage() {
       {/* Celebración */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
         {/* Emoji grande */}
-        <div className="text-7xl mb-4 animate-bounce">🎉</div>
+        <div className="text-7xl mb-4 animate-celebrate-in">🎉</div>
 
         <h1 className="font-display text-3xl font-bold text-center text-foreground mb-2">
           ¡Rutina completada!

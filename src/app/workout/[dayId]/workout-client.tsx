@@ -65,8 +65,8 @@ export function WorkoutClient({
 
   // Manejar completar serie
   const handleCompleteSet = useCallback(
-    (exerciseId: string, setNumber: number, reps: number, weight: number | null, rpe?: number) => {
-      completeSet(exerciseId, setNumber, reps, weight, rpe);
+    (exerciseId: string, setNumber: number, reps: number, weight: number | null) => {
+      completeSet(exerciseId, setNumber, reps, weight);
       // Activar timer de descanso
       setTimerActive(true);
     },
@@ -152,44 +152,45 @@ export function WorkoutClient({
       />
 
       {/* Series */}
-      <div className="flex-1 px-4 py-2 space-y-2">
-        <div className="flex items-center justify-between mb-2">
+      <div className="flex-1 py-2 space-y-2">
+        <div className="flex items-center justify-between px-4">
           <h3 className="text-base font-semibold text-muted-foreground">
-            Series ({completedSets}/{totalExSets})
+            Series (<span className="font-mono">{completedSets}/{totalExSets}</span>)
           </h3>
           {saving && (
             <span className="text-xs text-muted-foreground animate-pulse">Guardando...</span>
           )}
         </div>
 
-        {currentSets.map((set, idx) => {
-          // Auto-focus en la primera serie no completada
-          const firstIncomplete = currentSets.findIndex((s) => !s.completed);
-          const shouldFocus = idx === firstIncomplete;
+        <div className="space-y-2">
+          {currentSets.map((set, idx) => {
+            // Auto-focus en la primera serie no completada
+            const firstIncomplete = currentSets.findIndex((s) => !s.completed);
+            const shouldFocus = idx === firstIncomplete;
 
-          return (
-            <SetRow
-              key={`${currentExercise.exerciseId}-${set.setNumber}`}
-              setNumber={set.setNumber}
-              repsMin={currentExercise.repsMin}
-              repsMax={currentExercise.repsMax}
-              currentReps={set.reps}
-              currentWeight={set.weight}
-              previousWeight={getPreviousWeight(currentExercise.exerciseId, set.setNumber)}
-              previousReps={getPreviousReps(currentExercise.exerciseId, set.setNumber)}
-              completed={set.completed}
-              rpe={set.rpe}
-              isBodyweight={isBodyweightExercise(currentExercise.exercise.equipment)}
-              isFailed={isSetFailed(currentExercise.exerciseId, set.setNumber)}
-              onComplete={(reps, weight, rpe) =>
-                handleCompleteSet(currentExercise.exerciseId, set.setNumber, reps, weight, rpe)
-              }
-              onUndo={() => undoSet(currentExercise.exerciseId, set.setNumber)}
-              onRetry={() => retrySet(currentExercise.exerciseId, set.setNumber)}
-              autoFocus={shouldFocus}
-            />
-          );
-        })}
+            return (
+              <SetRow
+                key={`${currentExercise.exerciseId}-${set.setNumber}`}
+                setNumber={set.setNumber}
+                repsMin={currentExercise.repsMin}
+                repsMax={currentExercise.repsMax}
+                currentReps={set.reps}
+                currentWeight={set.weight}
+                previousWeight={getPreviousWeight(currentExercise.exerciseId, set.setNumber)}
+                previousReps={getPreviousReps(currentExercise.exerciseId, set.setNumber)}
+                completed={set.completed}
+                isBodyweight={isBodyweightExercise(currentExercise.exercise.equipment)}
+                isFailed={isSetFailed(currentExercise.exerciseId, set.setNumber)}
+                onComplete={(reps, weight) =>
+                  handleCompleteSet(currentExercise.exerciseId, set.setNumber, reps, weight)
+                }
+                onUndo={() => undoSet(currentExercise.exerciseId, set.setNumber)}
+                onRetry={() => retrySet(currentExercise.exerciseId, set.setNumber)}
+                autoFocus={shouldFocus}
+              />
+            );
+          })}
+        </div>
       </div>
 
       {/* Próximos ejercicios (preview) — clickeables, saltan directo a ese ejercicio */}
@@ -218,7 +219,7 @@ export function WorkoutClient({
 
       {/* CTA fijo inferior — siempre Volt, incluso al finalizar (momento de logro) */}
       {ctaText && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border safe-bottom">
           <button
             onClick={handleMainAction}
             className="w-full h-14 rounded-md font-display font-bold text-lg text-primary-foreground bg-primary transition-colors duration-150 ease-out-quint active:bg-volt-bright"
