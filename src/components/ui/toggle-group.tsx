@@ -2,10 +2,26 @@
 
 import * as React from 'react';
 import { ToggleGroup as ToggleGroupPrimitive } from 'radix-ui';
-import { type VariantProps } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
-import { toggleVariants } from '@/components/ui/toggle';
+
+// Base del componente "Chip" — filtros y selección (objetivo, nivel, sexo) (ver DESIGN.md § Components → Chips)
+const toggleVariants = cva(
+  'inline-flex items-center justify-center gap-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors duration-150 ease-out-quint disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=off]:bg-secondary data-[state=off]:text-muted-foreground',
+  {
+    variants: {
+      size: {
+        default: 'h-touch px-4',
+        sm: 'h-9 px-3 text-xs',
+        lg: 'h-14 px-6 text-base',
+      },
+    },
+    defaultVariants: {
+      size: 'default',
+    },
+  }
+);
 
 const ToggleGroupContext = React.createContext<VariantProps<typeof toggleVariants>>({
   size: 'default',

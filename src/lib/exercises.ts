@@ -165,27 +165,3 @@ export async function getExerciseHistory(userId: string, exerciseId: string) {
     },
   });
 }
-
-/**
- * Obtener todas las partes del cuerpo disponibles
- */
-export async function getBodyParts(): Promise<string[]> {
-  const result = await prisma.exercise.findMany({
-    distinct: ['bodyPart'],
-    select: { bodyPart: true },
-    orderBy: { bodyPart: 'asc' },
-  });
-  return result.map((r) => r.bodyPart);
-}
-
-/**
- * Obtener todos los tipos de equipamiento
- */
-export async function getEquipmentTypes(): Promise<string[]> {
-  const result = await prisma.exercise.findMany({
-    distinct: ['equipment'],
-    select: { equipment: true },
-    orderBy: { equipment: 'asc' },
-  });
-  return result.map((r) => r.equipment);
-}

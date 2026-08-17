@@ -3,7 +3,7 @@ import { prisma } from './prisma';
 /**
  * Verifica si un plan ha sido completado (todas las semanas entrenadas)
  */
-export async function checkPlanCompletion(planId: string): Promise<boolean> {
+async function checkPlanCompletion(planId: string): Promise<boolean> {
   const plan = await prisma.plan.findUnique({
     where: { id: planId },
     include: {
@@ -64,10 +64,14 @@ export async function getPlanStats(planId: string, userId: string) {
 
   sessions.forEach((session) => {
     session.sets.forEach((set) => {
-      if (set.weight && set.reps) {
-        totalVolume += set.weight * set.reps;
-        totalSets++;
+      // Toda serie completada cuenta para sets/reps; el peso solo afecta el
+      // volumen (las series de peso corporal tienen weight null/0).
+      totalSets++;
+      if (set.reps) {
         totalReps += set.reps;
+        if (set.weight) {
+          totalVolume += set.weight * set.reps;
+        }
       }
     });
   });

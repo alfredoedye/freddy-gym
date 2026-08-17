@@ -9,7 +9,7 @@ import type { GeneratedPlan } from './schemas';
 import type { GeneratePlanInput } from './generate-plan';
 
 // Tipo extendido del plan guardado con sus relaciones
-export type SavedPlan = Plan & {
+type SavedPlan = Plan & {
   planDays: Array<{
     id: string;
     dayNumber: number;

@@ -1,20 +1,20 @@
 import { prisma } from './prisma';
 
 // Tipos para los datos de progreso
-export interface WeeklyVolume {
+interface WeeklyVolume {
   week: string; // "2024-W01"
   weekLabel: string; // "Sem 1"
   volume: number; // kg totales
   startDate: string;
 }
 
-export interface WeeklyFrequency {
+interface WeeklyFrequency {
   week: string;
   weekLabel: string;
   sessions: number;
 }
 
-export interface TotalStats {
+interface TotalStats {
   totalSessions: number;
   totalVolume: number; // kg
   avgSessionDuration: number; // minutos
@@ -22,7 +22,7 @@ export interface TotalStats {
   totalExercises: number;
 }
 
-export interface PersonalRecord {
+interface PersonalRecord {
   exerciseId: string;
   exerciseName: string;
   weight: number;
@@ -31,7 +31,7 @@ export interface PersonalRecord {
   bodyPart: string;
 }
 
-export interface BodyPartVolume {
+interface BodyPartVolume {
   bodyPart: string;
   bodyPartLabel: string;
   volume: number;
@@ -39,7 +39,7 @@ export interface BodyPartVolume {
   color: string;
 }
 
-export interface ExerciseProgress {
+interface ExerciseProgress {
   exerciseId: string;
   exerciseName: string;
   bodyPart: string;
@@ -49,7 +49,7 @@ export interface ExerciseProgress {
   trend: 'up' | 'down' | 'stable';
 }
 
-export interface ExerciseHistory {
+interface ExerciseHistory {
   date: string;
   bestWeight: number;
   bestReps: number;

@@ -22,8 +22,7 @@ npx prisma studio                      # DB browser UI (also: npm run prisma:stu
 npx tsx scripts/create-user.ts         # create an initial user directly in the DB
 ```
 
-There is no test suite configured in this repo.
-
+Tests: Vitest (`npm test` to run once, `npm run test:watch` for watch mode). The suite lives in `tests/` (`unit/` for domain logic, `api/` for route handlers called directly, `hooks/` for client hooks via `@testing-library/react` + a per-file `@vitest-environment jsdom` pragma) and runs fully mocked — no DB or network needed. Prisma is mocked via the explicit hand-rolled mock in `tests/helpers/prisma-mock.ts` (add methods there when routes start using new ones), sessions via mocking `next-auth`'s `getServerSession`. `tests/helpers/fixtures.ts` builds schema-valid generated plans.
 Env vars required: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` (optional — leave blank to disable Google sign-in locally), `AI_PROVIDER` (`openai` or `anthropic`), `OPENAI_API_KEY`/`OPENAI_MODEL`, `ANTHROPIC_API_KEY`/`ANTHROPIC_MODEL`. No `.env.example` is committed; `.env` is gitignored. For local dev, a Postgres instance is easiest to run via `docker run -e POSTGRES_USER=gymapp -e POSTGRES_PASSWORD=gymapp -e POSTGRES_DB=gymapp -p 5434:5432 postgres:17-alpine` with `DATABASE_URL="postgresql://gymapp:gymapp@localhost:5434/gymapp"`. `NEXTAUTH_URL` must match whatever host/port the app actually runs on, or the credentials/OAuth callback flow silently breaks.
 
 ## Architecture
@@ -32,7 +31,7 @@ Env vars required: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CL
 
 `User` → `Profile` (goal/level/age/height/weight) and `Plan[]` (training plans). A `Plan` has `planDays: PlanDay[]` (7 rows per plan, some `isRest`), each `PlanDay` has `exercises: PlanExercise[]` (sets/reps/rest prescription referencing the `Exercise` catalog) and `workouts: WorkoutSession[]` (actual logged sessions, one per time the user trained that day). A `WorkoutSession` has `sets: WorkoutSet[]` (actual reps/weight/RPE logged, unique per `sessionId+exerciseId+setNumber` for upserts). `PlanFeedback` (difficulty rating, `TOO_EASY`–`TOO_HARD`) is collected when a plan finishes and feeds into the next plan's generation as progression context — a `Plan` can technically have more than one `PlanFeedback` row (it's a `[]` relation) even though the app only ever creates one; treat `plan.feedback[0]` as "the" feedback, not the whole array, and never do a truthy check directly on `plan.feedback` (an empty array is truthy).
 
-The `Goal` enum (`HYPERTROPHY`, `STRENGTH`, `ENDURANCE`, `FAT_LOSS`, `RECOMPOSITION`) is shared between `Profile.goal` and `Plan.goal`; it's also mirrored in `src/types/index.ts`'s `Goal` enum and hardcoded as string-literal unions in `src/lib/ai/schemas.ts` and various page components — if you add/rename a goal, update all of these together, there's no single source of truth enforced by the type system.
+The `Goal` enum (`HYPERTROPHY`, `STRENGTH`, `ENDURANCE`, `FAT_LOSS`, `RECOMPOSITION`) is shared between `Profile.goal` and `Plan.goal`; it's also hardcoded as string-literal unions in `src/lib/ai/schemas.ts` and various page components — if you add/rename a goal, update all of these together, there's no single source of truth enforced by the type system.
 
 ### AI plan generation (`src/lib/ai/`)
 
@@ -60,6 +59,5 @@ Because the JWT is stateless, `hasProfile` only updates when the client explicit
 - `src/app/` — App Router pages plus colocated API routes under `src/app/api/*/route.ts` (plan generation/feedback/stats, workout session/set logging, exercise catalog, profile, progress).
 - `src/lib/exercises.ts`, `src/lib/progress.ts`, `src/lib/plan-completion.ts` — query/aggregation logic used by pages and API routes (exercise search/filtering with Spanish-to-dataset value mapping, weekly volume/frequency/streak/PR calculations, plan-completion and feedback-prompt eligibility).
 - `src/hooks/useWorkout.ts` — client-side state machine for an in-progress workout session: builds per-exercise set lists (pre-populating weight from the previous session), optimistically completes/undoes sets while POSTing to `/api/workouts/[sessionId]/sets`, tracks elapsed time and computed volume.
-- `src/hooks/useTimer.ts` — rest-timer countdown hook used during workout execution.
 - Exercise data model uses English dataset values internally (`bodyPart`, `equipment`, `target` — e.g. `"upper arms"`, `"dumbbell"`) with Spanish-facing UI; the mapping tables live in `src/lib/exercises.ts` (search filters) and `src/lib/ai/generate-plan.ts` (`GYM_EQUIPMENT` list of equipment values eligible for AI-generated plans).
 - `prisma/seed.ts` reads `prisma/data/exercises.json` (present in the working tree, ~1300 exercises) and derives image/gif URLs from a fixed GitHub-hosted exercise media repo. Each entry's `instructions.es` is a single narrative string (not an array — don't `.join()` it); `instruction_steps.es` is the step-by-step array form, currently unused by the seed script.

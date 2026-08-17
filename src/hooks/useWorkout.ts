@@ -119,8 +119,16 @@ export function useWorkout({
 
   const setKey = (exerciseId: string, setNumber: number) => `${exerciseId}:${setNumber}`;
 
-  // Inicializar sets desde los existentes o crear vacíos
+  // Inicializar sets desde los existentes o crear vacíos.
+  // Corre una sola vez por sesión (guard por sessionId): las props de arrays
+  // pueden cambiar de identidad en cada render del caller (defaults, .filter(),
+  // datos de SWR) y re-ejecutar la inicialización pisaría el estado optimista
+  // de series completadas que todavía no están en existingSets.
+  const initializedSessionId = useRef<string | null>(null);
   useEffect(() => {
+    if (initializedSessionId.current === sessionId) return;
+    initializedSessionId.current = sessionId;
+
     const setsMap = new Map<string, WorkoutSetData[]>();
     // Sets completados que no llegaron al servidor antes del último unload
     const pending = readPendingSets(sessionId);

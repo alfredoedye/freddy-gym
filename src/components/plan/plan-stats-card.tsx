@@ -7,7 +7,7 @@ interface StatsCardProps {
   sublabel?: string;
 }
 
-export function PlanStatsCard({ icon, value, label, sublabel }: StatsCardProps) {
+function PlanStatsCard({ icon, value, label, sublabel }: StatsCardProps) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4">
       <span className="text-2xl">{icon}</span>

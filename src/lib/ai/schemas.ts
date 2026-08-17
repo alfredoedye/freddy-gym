@@ -6,7 +6,7 @@
 import { z } from 'zod';
 
 // Schema para un ejercicio dentro del plan generado
-export const PlanExerciseSchema = z.object({
+const PlanExerciseSchema = z.object({
   exerciseId: z.string().min(1, 'El ID del ejercicio es requerido'),
   phase: z.enum(['WARMUP', 'MAIN', 'COOLDOWN']).default('MAIN'),
   sets: z.number().int().min(1).max(6),
@@ -23,7 +23,7 @@ export const PlanExerciseSchema = z.object({
 });
 
 // Schema para un día del plan
-export const PlanDaySchema = z.object({
+const PlanDaySchema = z.object({
   dayNumber: z.number().int().min(1).max(7),
   name: z.string().min(1, 'El nombre del día es requerido'),
   isRest: z.boolean(),
@@ -53,9 +53,7 @@ export const GeneratedPlanSchema = z.object({
   days: z.array(PlanDaySchema).length(7, 'El plan debe tener exactamente 7 días'),
 });
 
-// Tipos derivados de los schemas
-export type GeneratedPlanExercise = z.infer<typeof PlanExerciseSchema>;
-export type GeneratedPlanDay = z.infer<typeof PlanDaySchema>;
+// Tipo derivado del schema
 export type GeneratedPlan = z.infer<typeof GeneratedPlanSchema>;
 
 /**
@@ -90,5 +88,3 @@ export const GeneratePlanRequestSchema = z.object({
   timePerSession: z.number().int().min(30).max(120).optional(),
   previousPlanId: z.string().optional(),
 });
-
-export type GeneratePlanRequest = z.infer<typeof GeneratePlanRequestSchema>;
