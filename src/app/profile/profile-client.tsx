@@ -335,18 +335,22 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
               <p className="text-sm text-muted-foreground">
                 Si no te apareció el aviso para instalarla, agregala manualmente:
               </p>
+              {/* Iconos inline (no flex): con fuente grande el texto necesita
+                  fluir y envolver como párrafo normal — un flex row parte la
+                  instrucción en columnas ilegibles. */}
               <div className="space-y-1.5">
                 <p className="text-sm font-medium text-foreground">iPhone (Safari)</p>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                  Tocá <Share className="h-4 w-4 shrink-0" /> Compartir → &quot;Agregar a
-                  pantalla de inicio&quot;
+                <p className="text-sm text-muted-foreground">
+                  Tocá <Share className="inline h-4 w-4 align-text-bottom" /> Compartir →
+                  &quot;Agregar a pantalla de inicio&quot;
                 </p>
               </div>
               <div className="space-y-1.5">
                 <p className="text-sm font-medium text-foreground">Android (Chrome)</p>
-                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Tocá el menú ⋮ → &quot;Instalar app&quot; (o{' '}
-                  <Plus className="h-4 w-4 shrink-0" /> &quot;Agregar a pantalla de inicio&quot;)
+                  <Plus className="inline h-4 w-4 align-text-bottom" /> &quot;Agregar a
+                  pantalla de inicio&quot;)
                 </p>
               </div>
             </div>

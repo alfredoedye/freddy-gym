@@ -27,3 +27,6 @@ next-env.d.ts
 .agents/
 .claude/
 skills-lock.json
+
+# QA/dogfood local artifacts (reportes, screenshots, videos de repro)
+dogfood-output/

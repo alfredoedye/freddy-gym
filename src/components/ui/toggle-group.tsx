@@ -12,9 +12,12 @@ const toggleVariants = cva(
   {
     variants: {
       size: {
-        default: 'h-touch px-4',
-        sm: 'h-9 px-3 text-xs',
-        lg: 'h-14 px-6 text-base',
+        // min-h en lugar de altura fija: con el tamaño de letra de accesibilidad
+        // en Grande/Extra grande el contenido puede superar los 48px y el chip
+        // debe crecer en vez de recortar su propio texto.
+        default: 'min-h-touch px-4',
+        sm: 'min-h-9 px-3 text-xs',
+        lg: 'min-h-14 px-6 text-base',
       },
     },
     defaultVariants: {

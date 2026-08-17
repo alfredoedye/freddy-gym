@@ -278,7 +278,8 @@ function CreatePlanContent() {
             <Calendar className="w-5 h-5 text-accent-text" />
             Duración
           </label>
-          <div className="grid grid-cols-4 gap-2">
+          {/* 2 columnas: "12 semanas" no entra en un cuarto de fila de 390px con fuente grande */}
+          <div className="grid grid-cols-2 gap-2">
             {DURATIONS.map((d) => (
               <button
                 key={d.value}

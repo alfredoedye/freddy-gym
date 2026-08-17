@@ -36,13 +36,15 @@ export function WorkoutHeader({ dayName, elapsedTime, progress, onBack, hasStart
             <ArrowLeft className="w-6 h-6" />
           </button>
 
-          {/* Nombre del día */}
-          <div className="flex-1 text-center">
+          {/* Nombre del día — min-w-0 permite que el flex item encoja y el
+              truncate actúe; sin esto un nombre largo empuja el timer fuera
+              de la pantalla en mobile. */}
+          <div className="flex-1 min-w-0 text-center">
             <h1 className="font-display text-lg font-bold truncate">{dayName}</h1>
           </div>
 
           {/* Timer y progreso */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground font-mono">
+          <div className="flex flex-shrink-0 items-center gap-2 text-sm text-muted-foreground font-mono">
             <Clock className="w-4 h-4" />
             <span>{elapsedTime}</span>
             <span className="text-xs bg-secondary text-muted-foreground px-2 py-0.5 rounded-full font-semibold">
