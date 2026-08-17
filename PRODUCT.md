@@ -32,3 +32,7 @@ Audaz, motivadora, precisa. Energía tipo Nike Training Club — tipografía con
 ## Accessibility & Inclusion
 
 WCAG AA como estándar base. Objetivos táctiles mínimos de 48px (56px para acciones principales) ya adoptados en el código, pensados para el contexto real de uso en el gimnasio. Respetar `prefers-reduced-motion` dado que la dirección de marca apoyada en movimiento/energía no debe excluir a usuarios sensibles a animación.
+
+## Backlog / Evoluciones futuras
+
+- **Set propio de GIFs/imágenes de ejercicios**: hoy los medios se sirven desde `raw.githubusercontent.com` (repo de terceros), que aplica rate-limiting (HTTP 429) y deja tarjetas con imagen rota sin fallback — detectado en dogfood mobile (ISSUE-005, 2026-08-17). Evolución: hostear un set propio de GIFs (p. ej. Vercel Blob o un bucket con CDN) con placeholder/fallback estático mientras carga o si falla.

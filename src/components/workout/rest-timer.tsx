@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { SkipForward, Plus, Minus } from 'lucide-react';
 
 interface RestTimerProps {
@@ -61,6 +61,19 @@ export function RestTimer({ duration, isActive, sessionId, onComplete, onSkip }:
   const [adjustedDuration, setAdjustedDuration] = useState(duration);
   const [timeRemaining, setTimeRemaining] = useState(duration);
   const [justFinished, setJustFinished] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Al activarse, traer el anillo a la vista: el timer se renderiza arriba de
+  // la ficha del ejercicio, pero el usuario completa la serie desde la lista
+  // de series (mucho más abajo) — sin este scroll el descanso corre invisible
+  // fuera de pantalla y parece que nunca arrancó.
+  useEffect(() => {
+    if (!isActive) return;
+    const raf = requestAnimationFrame(() => {
+      containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isActive]);
 
   // Al activarse: retomar el deadline persistido (refresh a mitad de descanso)
   // o crear uno nuevo.
@@ -162,7 +175,7 @@ export function RestTimer({ duration, isActive, sessionId, onComplete, onSkip }:
   const ringColorClass = isUrgent ? 'text-destructive' : 'text-primary';
 
   return (
-    <div className="flex flex-col items-center py-6 px-4 bg-secondary/50 border-y border-border">
+    <div ref={containerRef} className="flex flex-col items-center py-6 px-4 bg-secondary/50 border-y border-border">
       {/* Etiqueta */}
       <p className="text-sm font-medium text-muted-foreground mb-3 uppercase tracking-wide">
         Descanso

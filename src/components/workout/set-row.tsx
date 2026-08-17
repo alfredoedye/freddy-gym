@@ -43,14 +43,23 @@ export function SetRow({
   const repsRef = useRef<HTMLInputElement>(null);
   const weightRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus en el primer input vacío
+  // Auto-focus en el primer input vacío, UNA sola vez cuando la fila se vuelve
+  // activa. Sin el guard, el efecto se re-dispara con cada tecla (weight/reps
+  // cambian) y roba el foco al campo de reps a mitad de tipeo: "10" en peso
+  // terminaba como peso=1 y el 0 caía en reps.
+  const didAutoFocus = useRef(false);
   useEffect(() => {
-    if (autoFocus && !completed) {
-      if (!isBodyweight && !weight) {
-        weightRef.current?.focus();
-      } else if (!reps) {
-        repsRef.current?.focus();
-      }
+    if (!autoFocus || completed) {
+      didAutoFocus.current = false;
+      return;
+    }
+    if (didAutoFocus.current) return;
+    didAutoFocus.current = true;
+
+    if (!isBodyweight && !weight) {
+      weightRef.current?.focus();
+    } else if (!reps) {
+      repsRef.current?.focus();
     }
   }, [autoFocus, completed, weight, reps, isBodyweight]);
 
