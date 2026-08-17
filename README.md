@@ -118,7 +118,7 @@ freddy-gym/
 │   │   ├── profile/               # datos, accesibilidad, instalar PWA, logout
 │   │   └── api/                   # rutas de API colocadas junto a cada dominio
 │   ├── components/                # ui/ (shadcn), layout/, workout/, plan/, progress/, exercises/
-│   ├── hooks/                     # useWorkout (máquina de estado de una sesión), useTimer
+│   ├── hooks/                     # useWorkout (máquina de estado de una sesión)
 │   ├── lib/
 │   │   ├── ai/                    # generate-plan, prompts, schemas (Zod), client (AI Gateway), save-plan
 │   │   ├── exercises.ts, progress.ts, plan-completion.ts

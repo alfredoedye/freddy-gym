@@ -11,9 +11,9 @@ interface RestTimerProps {
   onSkip: () => void;
 }
 
-// Clave de sessionStorage donde vive el deadline del descanso en curso.
-// Exportada para que workout-client pueda reactivar el timer tras un refresh.
-export function restTimerStorageKey(sessionId: string) {
+// Clave de sessionStorage donde vive el deadline del descanso en curso
+// (workout-client lo reactiva tras un refresh vía readStoredRestTimer).
+function restTimerStorageKey(sessionId: string) {
   return `gymapp:restTimer:${sessionId}`;
 }
 

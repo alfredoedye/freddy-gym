@@ -15,8 +15,15 @@ const registerSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // Un body que no es JSON es un error del cliente, no del servidor.
+  let body: unknown;
   try {
-    const body = await request.json();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
+  }
+
+  try {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {

@@ -33,12 +33,12 @@ export interface GeneratePlanInput {
   previousPlanId?: string;
 }
 
-export interface GeneratePlanResult {
+interface GeneratePlanResult {
   success: true;
   plan: GeneratedPlan;
 }
 
-export interface GeneratePlanError {
+interface GeneratePlanError {
   success: false;
   error: string;
   details?: string;

@@ -72,13 +72,12 @@ describe('POST /api/auth/register', () => {
     expect(prismaMock.user.create).not.toHaveBeenCalled();
   });
 
-  it('devuelve 500 controlado ante un body que no es JSON', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-
+  it('devuelve 400 ante un body que no es JSON (error del cliente, no del servidor)', async () => {
     const response = await POST(jsonRequest('/api/auth/register', '{esto no es json'));
 
-    expect(response.status).toBe(500);
-    expect((await response.json()).error).toBe('Error interno del servidor');
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toBe('Datos inválidos');
+    expect(prismaMock.user.create).not.toHaveBeenCalled();
   });
 
   it('devuelve 500 controlado si la DB falla al crear', async () => {

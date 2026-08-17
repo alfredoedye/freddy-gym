@@ -276,7 +276,7 @@ function CuerpoTab({ data, loading }: { data: any; loading: boolean }) {
         <BodyMap data={bodyPartDistribution} />
       </div>
       <p className="text-xs text-muted-foreground/70 text-center">
-        Los grupos marcados como "Sub-entrenado" tienen menos del 60% del volumen promedio
+        Los grupos marcados como &ldquo;Sub-entrenado&rdquo; tienen menos del 60% del volumen promedio
       </p>
     </div>
   );

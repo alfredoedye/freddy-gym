@@ -45,7 +45,7 @@ describe('getPlanStats', () => {
         completedAt: new Date('2026-07-01T11:00:00Z'),
         sets: [
           { weight: 100, reps: 5 },
-          { weight: null, reps: 5 }, // sin peso: no cuenta para volumen
+          { weight: null, reps: 5 }, // peso corporal: cuenta para sets/reps pero no para volumen
           { weight: 80, reps: 8 },
         ],
       },
@@ -61,8 +61,8 @@ describe('getPlanStats', () => {
 
     expect(stats).not.toBeNull();
     expect(stats!.totalVolume).toBe(100 * 5 + 80 * 8);
-    expect(stats!.totalSets).toBe(2);
-    expect(stats!.totalReps).toBe(13);
+    expect(stats!.totalSets).toBe(3);
+    expect(stats!.totalReps).toBe(18);
     expect(stats!.totalDurationMinutes).toBe(90);
     expect(stats!.weeksCompleted).toBe(1);
     expect(stats!.totalSessions).toBe(2);

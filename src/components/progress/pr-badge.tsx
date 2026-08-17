@@ -37,21 +37,3 @@ export function PRBadge({ weight, reps, date, exerciseName, isNew }: PRBadgeProp
     </div>
   );
 }
-
-// Versión compacta para listas
-export function PRBadgeCompact({
-  weight,
-  exerciseName,
-}: {
-  weight: number;
-  exerciseName: string;
-}) {
-  return (
-    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-accent border border-primary/30">
-      <span className="text-sm">🏆</span>
-      <span className="text-xs font-medium text-accent-text font-mono">
-        {exerciseName}: {weight} kg
-      </span>
-    </div>
-  );
-}

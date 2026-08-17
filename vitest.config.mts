@@ -4,7 +4,9 @@ import path from 'node:path';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['tests/**/*.test.ts'],
+    include: ['tests/**/*.test.{ts,tsx}'],
+    // Los spies (ej. silenciar console.error) se restauran solos entre tests.
+    restoreMocks: true,
   },
   resolve: {
     alias: {

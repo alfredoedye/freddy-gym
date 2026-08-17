@@ -36,10 +36,6 @@ function planExercise(exerciseId: string, sets: number, order: number): PlanExer
 const exercises = [planExercise('ex-1', 2, 1), planExercise('ex-2', 1, 2)];
 
 function render(overrides: Partial<Parameters<typeof useWorkout>[0]> = {}) {
-  // Los parámetros se construyen UNA vez, fuera del callback de render: el
-  // efecto de inicialización del hook depende de la identidad de estos arrays
-  // (como las props estables que recibe del server component en la app real);
-  // recrearlos en cada render provoca un loop infinito de renders.
   const params = {
     sessionId: 'session-1',
     exercises,
@@ -61,6 +57,26 @@ afterEach(() => {
 });
 
 describe('useWorkout — inicialización', () => {
+  it('no re-inicializa (ni pisa estado optimista) cuando las props cambian de identidad', async () => {
+    const initialProps = {
+      sessionId: 'session-1',
+      exercises,
+      existingSets: [] as WorkoutSetData[],
+      previousSets: [] as WorkoutSetData[],
+    };
+    const { result, rerender } = renderHook((p) => useWorkout(p), { initialProps });
+
+    await act(async () => {
+      await result.current.completeSet('ex-1', 1, 10, 60);
+    });
+    expect(result.current.sets.get('ex-1')![0].completed).toBe(true);
+
+    // Mismos datos, nuevas identidades de arrays (caller que computa props inline)
+    rerender({ ...initialProps, exercises: [...exercises], existingSets: [], previousSets: [] });
+
+    expect(result.current.sets.get('ex-1')![0].completed).toBe(true);
+  });
+
   it('arma la lista de series por ejercicio según lo prescripto', () => {
     const { result } = render();
 

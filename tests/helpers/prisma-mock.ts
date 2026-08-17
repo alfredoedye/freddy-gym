@@ -33,6 +33,7 @@ export function createPrismaMock() {
     planExercise: { findFirst: vi.fn(), update: vi.fn() },
     planFeedback: { create: vi.fn() },
     workoutSession: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
