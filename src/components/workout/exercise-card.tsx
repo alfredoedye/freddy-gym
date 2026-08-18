@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Dumbbell, Target, X } from 'lucide-react';
+import { getEquipmentLabel, getMuscleLabel } from '@/lib/exercise-utils';
 
 const PHASE_LABELS: Record<'WARMUP' | 'MAIN' | 'COOLDOWN', string> = {
   WARMUP: '🔥 Calentamiento',
@@ -72,11 +73,11 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
           <div className="flex flex-wrap justify-center gap-2 mt-2">
             <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary text-muted-foreground px-2 py-1 rounded-full">
               <Target className="w-3 h-3" />
-              {exercise.target}
+              {getMuscleLabel(exercise.target)}
             </span>
             <span className="inline-flex items-center gap-1 text-xs font-medium bg-secondary text-muted-foreground px-2 py-1 rounded-full">
               <Dumbbell className="w-3 h-3" />
-              {exercise.equipment}
+              {getEquipmentLabel(exercise.equipment)}
             </span>
           </div>
         </div>

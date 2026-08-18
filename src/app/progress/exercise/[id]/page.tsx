@@ -6,6 +6,7 @@ import { VolumeChart, VolumeChartSkeleton } from '@/components/progress/volume-c
 import { PRBadge } from '@/components/progress/pr-badge';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Image from 'next/image';
+import { getEquipmentLabel, getMuscleLabel } from '@/lib/exercise-utils';
 
 interface ExerciseData {
   exercise: {
@@ -115,7 +116,7 @@ export default function ExerciseProgressPage() {
               {exercise.name}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {exercise.target} • {exercise.equipment}
+              {getMuscleLabel(exercise.target)} • {getEquipmentLabel(exercise.equipment)}
             </p>
           </div>
         </div>
