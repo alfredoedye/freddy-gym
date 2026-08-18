@@ -27,7 +27,6 @@ import {
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ExercisePickerDialog } from '@/components/plan/exercise-picker-dialog';
 import { goalLabels, splitLabels } from '@/lib/plan-labels';
 
 // Tipos locales (espejo del response de la API)
@@ -425,7 +424,6 @@ function DayCard({
                       <EditableExerciseRow
                         key={ex.id}
                         exercise={ex}
-                        dayExercises={day.exercises}
                         phase={phase}
                         planId={planId}
                         onSaved={onExerciseSaved}
@@ -476,14 +474,12 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
 
 function EditableExerciseRow({
   exercise: ex,
-  dayExercises,
   phase,
   planId,
   onSaved,
   onDirtyChange,
 }: {
   exercise: PlanExerciseView;
-  dayExercises: PlanExerciseView[];
   phase: ExercisePhase;
   planId: string;
   onSaved: (updated: PlanExerciseView) => void;
@@ -493,18 +489,13 @@ function EditableExerciseRow({
   const [repsMin, setRepsMin] = useState(ex.repsMin);
   const [repsMax, setRepsMax] = useState(ex.repsMax);
   const [restSeconds, setRestSeconds] = useState(ex.restSeconds);
-  const [notes, setNotes] = useState(ex.notes || '');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pendingExercise, setPendingExercise] = useState(ex.exercise);
   const [saving, setSaving] = useState(false);
 
   const dirty =
     sets !== ex.sets ||
     repsMin !== ex.repsMin ||
     repsMax !== ex.repsMax ||
-    restSeconds !== ex.restSeconds ||
-    notes !== (ex.notes || '') ||
-    pendingExercise.id !== ex.exercise.id;
+    restSeconds !== ex.restSeconds;
 
   // Avisar al padre para que pueda confirmar antes de descartar cambios al
   // salir del modo edición (ver handleToggleEditing en PlanViewPage).
@@ -514,19 +505,11 @@ function EditableExerciseRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, ex.id]);
 
-  // Otros ejercicios del mismo día — para no dejar elegir uno que ya está
-  // usado (creaba duplicados silenciosos sin ningún aviso).
-  const otherExerciseIds = dayExercises
-    .filter((other) => other.id !== ex.id)
-    .map((other) => other.exercise.id);
-
   const resetToSaved = () => {
     setSets(ex.sets);
     setRepsMin(ex.repsMin);
     setRepsMax(ex.repsMax);
     setRestSeconds(ex.restSeconds);
-    setNotes(ex.notes || '');
-    setPendingExercise(ex.exercise);
   };
 
   const handleSave = async () => {
@@ -540,14 +523,7 @@ function EditableExerciseRow({
       const res = await fetch(`/api/plans/${planId}/exercises/${ex.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sets,
-          repsMin,
-          repsMax,
-          restSeconds,
-          notes: notes.trim() || null,
-          ...(pendingExercise.id !== ex.exercise.id ? { exerciseId: pendingExercise.id } : {}),
-        }),
+        body: JSON.stringify({ sets, repsMin, repsMax, restSeconds }),
       });
 
       const data = await res.json();
@@ -569,10 +545,10 @@ function EditableExerciseRow({
   return (
     <div className="rounded-md border border-border p-3 space-y-3">
       <div className="flex items-center gap-3">
-        {pendingExercise.imageUrl ? (
+        {ex.exercise.imageUrl ? (
           <img
-            src={pendingExercise.imageUrl}
-            alt={pendingExercise.name}
+            src={ex.exercise.imageUrl}
+            alt={ex.exercise.name}
             className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
           />
         ) : (
@@ -580,34 +556,29 @@ function EditableExerciseRow({
             <Dumbbell className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
+        {/* El ejercicio en sí y sus notas son parte de la prescripción
+            generada, no algo para tocar desde acá — cambiarlo de vuelta
+            significa reemplazarlo por otro ejercicio entero, no ajustar un
+            número. Este modo solo edita series/reps/descanso. */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-base truncate">{pendingExercise.name}</p>
-          <button
-            onClick={() => setPickerOpen(true)}
-            className="text-xs text-accent-text hover:underline"
-          >
-            Cambiar ejercicio
-          </button>
+          <p className="font-medium text-base truncate">{ex.exercise.name}</p>
+          {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2">
+      {/* Dos filas de 2 columnas en vez de 4 columnas iguales: con la escala
+          de fuente grande (Perfil > Accesibilidad), "Reps min"/"Reps max" no
+          entraban en una columna de 4 y envolvían a dos líneas mientras
+          "Series"/"Descanso" quedaban en una — los inputs de abajo terminaban
+          a distinta altura entre sí. Con solo 2 columnas cada label tiene el
+          doble de ancho y no rompe línea incluso en el escalón más grande. */}
+      <div className="grid grid-cols-2 gap-2">
         <NumberField label="Series" value={sets} onChange={setSets} min={1} max={10} />
-        <NumberField label="Reps min" value={repsMin} onChange={setRepsMin} min={1} max={50} />
-        <NumberField label="Reps max" value={repsMax} onChange={setRepsMax} min={1} max={50} />
         <NumberField label="Descanso" value={restSeconds} onChange={setRestSeconds} min={0} max={600} />
       </div>
-      {/* Notas en su propia fila a ancho completo — dentro de la grilla de 2
-          columnas junto a Descanso quedaba tan angosta que el texto se veía
-          cortado a un puñado de caracteres, tanto en reposo como editando. */}
-      <div>
-        <label className="text-xs text-muted-foreground mb-1 block">Notas</label>
-        <Input
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          className="h-9 text-sm"
-          placeholder="Opcional"
-        />
+      <div className="grid grid-cols-2 gap-2">
+        <NumberField label="Reps min" value={repsMin} onChange={setRepsMin} min={1} max={50} />
+        <NumberField label="Reps max" value={repsMax} onChange={setRepsMax} min={1} max={50} />
       </div>
 
       {dirty && (
@@ -622,16 +593,6 @@ function EditableExerciseRow({
           </Button>
         </div>
       )}
-
-      <ExercisePickerDialog
-        open={pickerOpen}
-        onOpenChange={setPickerOpen}
-        excludeIds={otherExerciseIds}
-        onSelect={(selected) => {
-          setPendingExercise(selected);
-          setPickerOpen(false);
-        }}
-      />
     </div>
   );
 }
