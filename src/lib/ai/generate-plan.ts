@@ -48,6 +48,28 @@ interface GeneratePlanError {
 
 const MAX_RETRIES = 2;
 
+// Presupuesto de tokens de salida por llamada al LLM, escalado según cuántos días
+// de entrenamiento hay que describir. Cada día de entrenamiento pide 1-3 WARMUP +
+// 4-6 MAIN + 1-3 COOLDOWN (ver RESPONSE_FORMAT en prompts.ts) — un plan de 6 días
+// necesita casi el doble de JSON que uno de 3. Con daysPerWeek=6 (el default del
+// formulario) esto fallaba el 100% de las veces con "No se pudo generar un plan
+// válido". Dos causas distintas, ambas necesarias de arreglar:
+// 1. generateText() (no streaming, ver callLLM en client.ts) se cortaba en algún
+//    punto entre los 60-80s devolviendo el buffer parcial como si fuera la
+//    respuesta completa, mucho antes de acercarse al tope de tokens — resuelto
+//    cambiando a streamText.
+// 2. Ya con streaming, la verbosidad del LLM varía entre llamadas (a veces
+//    ~4400 tokens de salida, a veces agotaba genuinamente un tope de 8000 —
+//    finishReason: "length") — resuelto subiendo el presupuesto y pidiendo en
+//    el prompt que "notes" sea la excepción, no la regla (ver prompts.ts).
+function maxTokensFor(daysPerWeek: number): number {
+  return Math.min(14000, 4500 + daysPerWeek * 1600);
+}
+
+function timeoutMsFor(daysPerWeek: number): number {
+  return Math.min(150_000, 40_000 + daysPerWeek * 12_000);
+}
+
 // Mapeo de equipamiento disponible en gimnasio completo
 const GYM_EQUIPMENT = [
   'body weight',
@@ -167,6 +189,7 @@ export async function generateTrainingPlan(
     let lastError = '';
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      let responseMeta: string | undefined;
       try {
         const promptForAttempt = lastError
           ? `${userPrompt}\n\nCORRECCIÓN — tu respuesta anterior fue rechazada por este motivo, no lo repitas: ${lastError}`
@@ -174,9 +197,11 @@ export async function generateTrainingPlan(
 
         const response = await callLLM(SYSTEM_PROMPT, promptForAttempt, {
           temperature: 0.7,
-          maxTokens: 4000,
+          maxTokens: maxTokensFor(input.daysPerWeek),
+          timeoutMs: timeoutMsFor(input.daysPerWeek),
           jsonMode: true,
         });
+        responseMeta = `finishReason=${response.finishReason} outputTokens=${response.usage?.outputTokens}`;
 
         // 6. Parsear JSON
         const parsed = parseJSONResponse(response.content);
@@ -213,7 +238,10 @@ export async function generateTrainingPlan(
         return { success: true, plan: validated };
       } catch (err) {
         lastError = err instanceof Error ? err.message : 'Error desconocido al parsear respuesta';
-        console.warn(`[AI Plan] Intento ${attempt + 1} falló: ${lastError}`);
+        console.warn(
+          `[AI Plan] Intento ${attempt + 1} falló: ${lastError}` +
+            (responseMeta ? ` (${responseMeta})` : '')
+        );
       }
     }
 

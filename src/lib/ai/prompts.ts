@@ -27,7 +27,7 @@ REGLAS PARA LA RESPUESTA:
 - Usar SOLO los IDs de ejercicios proporcionados en el pool disponible.
 - No inventar ejercicios ni IDs que no estén en la lista.
 - Asignar rangos de repeticiones coherentes con el objetivo del usuario.
-- Incluir notas técnicas breves cuando sea relevante (en español).`;
+- Incluir "notes" SOLO en ejercicios "COOLDOWN" (duración del estiramiento) y en como máximo 2 ejercicios "MAIN" por día que realmente lo necesiten (una corrección técnica puntual, máximo 8 palabras). Omitir "notes" en el resto — no es obligatorio en cada ejercicio y una respuesta más corta reduce el riesgo de que se corte a mitad de generación en planes de varios días.`;
 
 // === CONTEXTO DEL USUARIO ===
 
@@ -107,7 +107,7 @@ INSTRUCCIONES:
 - Cada día de entrenamiento debe tener entre 4 y 6 ejercicios principales, más su calentamiento y enfriamiento correspondientes.
 - Nombra cada día de forma descriptiva (ej: "Push A - Pecho énfasis", "Pull B - Espalda ancho").
 - Asigna series, rango de repeticiones y descanso apropiados al objetivo.
-- Incluye notas técnicas breves donde sea útil.`;
+- Notas técnicas SOLO donde de verdad hagan falta (ver REGLAS PARA LA RESPUESTA) — priorizá una respuesta compacta.`;
 }
 
 // === CONTEXTO DE PROGRESIÓN ===
@@ -231,8 +231,7 @@ export const RESPONSE_FORMAT = `FORMATO DE RESPUESTA (JSON estricto):
           "sets": 1,
           "repsMin": 10,
           "repsMax": 15,
-          "restSeconds": 30,
-          "notes": "Calentamiento dinámico antes del trabajo principal"
+          "restSeconds": 30
         },
         {
           "exerciseId": "0045",
@@ -240,8 +239,7 @@ export const RESPONSE_FORMAT = `FORMATO DE RESPUESTA (JSON estricto):
           "sets": 4,
           "repsMin": 8,
           "repsMax": 12,
-          "restSeconds": 90,
-          "notes": "Nota técnica opcional en español"
+          "restSeconds": 90
         },
         {
           "exerciseId": "1512",
@@ -270,7 +268,7 @@ IMPORTANTE:
   1. Entre 1 y 3 ejercicios de fase "WARMUP" (calentamiento dinámico o cardio suave, relacionados a los grupos musculares del día).
   2. Entre 3 y 7 ejercicios de fase "MAIN" (el trabajo principal).
   3. Entre 1 y 3 ejercicios de fase "COOLDOWN" (estiramientos de los músculos trabajados ese día — buscar ejercicios cuyo nombre incluya "stretch" en el pool).
-- Para "WARMUP" y "COOLDOWN": sets = 1. Para "COOLDOWN", usar repsMin = repsMax = 1 y describir la duración del estiramiento en "notes" (ej: "Mantener 30 segundos por lado").
+- Para "WARMUP" y "COOLDOWN": sets = 1. Para "COOLDOWN", usar repsMin = repsMax = 1 y describir la duración del estiramiento en "notes" (ej: "Mantener 30 segundos por lado") — es el único caso donde "notes" es obligatorio.
 - Los exerciseId deben ser strings exactos del pool proporcionado.
 - repsMin debe ser <= repsMax.
 - restSeconds entre 30 y 300.
