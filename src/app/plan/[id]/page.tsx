@@ -546,28 +546,23 @@ function EditableExerciseRow({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <NumberField label="Series" value={sets} onChange={setSets} min={1} max={10} />
         <NumberField label="Reps min" value={repsMin} onChange={setRepsMin} min={1} max={50} />
         <NumberField label="Reps max" value={repsMax} onChange={setRepsMax} min={1} max={50} />
+        <NumberField label="Descanso" value={restSeconds} onChange={setRestSeconds} min={0} max={600} />
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField
-          label="Descanso (seg)"
-          value={restSeconds}
-          onChange={setRestSeconds}
-          min={0}
-          max={600}
+      {/* Notas en su propia fila a ancho completo — dentro de la grilla de 2
+          columnas junto a Descanso quedaba tan angosta que el texto se veía
+          cortado a un puñado de caracteres, tanto en reposo como editando. */}
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Notas</label>
+        <Input
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          className="h-9 text-sm"
+          placeholder="Opcional"
         />
-        <div>
-          <label className="text-xs text-muted-foreground mb-1 block">Notas</label>
-          <Input
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="h-9 text-sm"
-            placeholder="Opcional"
-          />
-        </div>
       </div>
 
       {dirty && (
@@ -608,18 +603,35 @@ function NumberField({
   min: number;
   max: number;
 }) {
+  // Borrador en texto, independiente del número committeado: si el onChange
+  // clampeaba/ignoraba en cada tecla, borrar el campo (o pasarse del rango a
+  // mitad de tipeo) nunca disparaba un nuevo render y el input quedaba
+  // mostrando lo que el usuario tipeó (vacío) mientras React seguía pensando
+  // que el valor era el de antes — desincronizado, sin forma de arreglarlo
+  // salvo recargando. Clampeamos recién al perder el foco.
+  const [draft, setDraft] = useState(String(value));
+
+  useEffect(() => {
+    setDraft(String(value));
+  }, [value]);
+
+  const commit = () => {
+    const parsed = parseInt(draft, 10);
+    const clamped = Number.isNaN(parsed) ? value : Math.min(max, Math.max(min, parsed));
+    setDraft(String(clamped));
+    if (clamped !== value) onChange(clamped);
+  };
+
   return (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
       <Input
         type="number"
-        value={value}
+        value={draft}
         min={min}
         max={max}
-        onChange={(e) => {
-          const parsed = parseInt(e.target.value, 10);
-          if (!Number.isNaN(parsed)) onChange(Math.min(max, Math.max(min, parsed)));
-        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
         className="h-9 text-sm"
       />
     </div>
