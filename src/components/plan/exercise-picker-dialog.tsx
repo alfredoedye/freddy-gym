@@ -25,12 +25,16 @@ interface ExercisePickerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (exercise: PickerExercise) => void;
+  /** IDs de ejercicios a ocultar de la lista — p. ej. los que ya están en el
+   * mismo día, para no dejar elegir un duplicado silencioso. */
+  excludeIds?: string[];
 }
 
-export function ExercisePickerDialog({ open, onOpenChange, onSelect }: ExercisePickerDialogProps) {
+export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds = [] }: ExercisePickerDialogProps) {
   const [search, setSearch] = useState('');
   const [exercises, setExercises] = useState<PickerExercise[]>([]);
   const [loading, setLoading] = useState(false);
+  const visibleExercises = exercises.filter((ex) => !excludeIds.includes(ex.id));
 
   useEffect(() => {
     if (!open) return;
@@ -76,14 +80,14 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect }: ExerciseP
             </div>
           )}
 
-          {!loading && exercises.length === 0 && (
+          {!loading && visibleExercises.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No se encontraron ejercicios
             </p>
           )}
 
           {!loading &&
-            exercises.map((ex) => (
+            visibleExercises.map((ex) => (
               <button
                 key={ex.id}
                 onClick={() => onSelect(ex)}

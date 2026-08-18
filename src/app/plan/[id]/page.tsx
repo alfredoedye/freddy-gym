@@ -7,7 +7,7 @@
  * ejercicio, y eliminar/cancelar el plan.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -91,6 +91,9 @@ export default function PlanViewPage() {
   const [activating, setActivating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Ejercicios con cambios sin guardar (por id de PlanExercise), para poder
+  // avisar antes de perderlos al salir del modo edición.
+  const [dirtyExerciseIds, setDirtyExerciseIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchPlan();
@@ -134,6 +137,25 @@ export default function PlanViewPage() {
     } finally {
       setActivating(false);
     }
+  };
+
+  const handleDirtyChange = useCallback((exerciseId: string, isDirty: boolean) => {
+    setDirtyExerciseIds((prev) => {
+      if (isDirty === prev.has(exerciseId)) return prev;
+      const next = new Set(prev);
+      if (isDirty) next.add(exerciseId);
+      else next.delete(exerciseId);
+      return next;
+    });
+  }, []);
+
+  const handleToggleEditing = () => {
+    if (isEditing && dirtyExerciseIds.size > 0) {
+      if (!window.confirm('Tenés cambios sin guardar en algunos ejercicios. ¿Salir sin guardarlos?')) {
+        return;
+      }
+    }
+    setIsEditing((v) => !v);
   };
 
   const handleExerciseSaved = (planDayId: string, updated: PlanExerciseView) => {
@@ -222,7 +244,7 @@ export default function PlanViewPage() {
           </button>
           <h1 className="font-display text-xl font-bold truncate flex-1">{plan.name}</h1>
           <button
-            onClick={() => setIsEditing((v) => !v)}
+            onClick={handleToggleEditing}
             className={`p-2 rounded-md transition-colors duration-150 ${isEditing ? 'bg-accent text-accent-text' : 'hover:bg-secondary'}`}
             aria-label="Editar plan"
           >
@@ -282,6 +304,7 @@ export default function PlanViewPage() {
                 isEditing={isEditing}
                 planId={planId}
                 onExerciseSaved={(updated) => handleExerciseSaved(day.id, updated)}
+                onDirtyChange={handleDirtyChange}
               />
             ))}
           </div>
@@ -339,6 +362,7 @@ function DayCard({
   isEditing,
   planId,
   onExerciseSaved,
+  onDirtyChange,
 }: {
   day: PlanDayView;
   dayLabel: string;
@@ -347,6 +371,7 @@ function DayCard({
   isEditing: boolean;
   planId: string;
   onExerciseSaved: (updated: PlanExerciseView) => void;
+  onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
   if (day.isRest) {
     return (
@@ -400,9 +425,11 @@ function DayCard({
                       <EditableExerciseRow
                         key={ex.id}
                         exercise={ex}
+                        dayExercises={day.exercises}
                         phase={phase}
                         planId={planId}
                         onSaved={onExerciseSaved}
+                        onDirtyChange={onDirtyChange}
                       />
                     ) : (
                       <ExerciseRow key={ex.id} exercise={ex} phase={phase} />
@@ -449,14 +476,18 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
 
 function EditableExerciseRow({
   exercise: ex,
+  dayExercises,
   phase,
   planId,
   onSaved,
+  onDirtyChange,
 }: {
   exercise: PlanExerciseView;
+  dayExercises: PlanExerciseView[];
   phase: ExercisePhase;
   planId: string;
   onSaved: (updated: PlanExerciseView) => void;
+  onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
   const [sets, setSets] = useState(ex.sets);
   const [repsMin, setRepsMin] = useState(ex.repsMin);
@@ -474,6 +505,20 @@ function EditableExerciseRow({
     restSeconds !== ex.restSeconds ||
     notes !== (ex.notes || '') ||
     pendingExercise.id !== ex.exercise.id;
+
+  // Avisar al padre para que pueda confirmar antes de descartar cambios al
+  // salir del modo edición (ver handleToggleEditing en PlanViewPage).
+  useEffect(() => {
+    onDirtyChange(ex.id, dirty);
+    return () => onDirtyChange(ex.id, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dirty, ex.id]);
+
+  // Otros ejercicios del mismo día — para no dejar elegir uno que ya está
+  // usado (creaba duplicados silenciosos sin ningún aviso).
+  const otherExerciseIds = dayExercises
+    .filter((other) => other.id !== ex.id)
+    .map((other) => other.exercise.id);
 
   const resetToSaved = () => {
     setSets(ex.sets);
@@ -581,6 +626,7 @@ function EditableExerciseRow({
       <ExercisePickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
+        excludeIds={otherExerciseIds}
         onSelect={(selected) => {
           setPendingExercise(selected);
           setPickerOpen(false);
