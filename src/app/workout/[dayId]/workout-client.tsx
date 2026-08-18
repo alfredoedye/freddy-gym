@@ -88,6 +88,14 @@ export function WorkoutClient({
     setTimerActive(false);
   }, []);
 
+  // Al cambiar de ejercicio (siguiente o salto directo desde el progreso/preview),
+  // volver arriba del todo. Sin esto la página queda donde estaba el usuario
+  // dentro de la ficha anterior — normalmente scrolleada hasta las series — y
+  // el nuevo ejercicio arranca a mitad de scroll en vez de mostrar su nombre/GIF.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentExerciseIndex]);
+
   // Manejar botón principal (CTA)
   const handleMainAction = useCallback(() => {
     if (isWorkoutComplete) {
