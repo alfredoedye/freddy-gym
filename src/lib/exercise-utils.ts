@@ -47,10 +47,22 @@ export function getEquipmentLabel(equipment: string): string {
   return EQUIPMENT_LABELS[equipment.toLowerCase()] || equipment;
 }
 
-// Ejercicios de "body weight" no llevan peso adicional, solo repeticiones
-// (a diferencia de "weighted", que es la variante lastrada de un movimiento bodyweight)
+// Equipamiento sin una carga que tenga sentido registrar en kg: "body weight"
+// (solo repeticiones, a diferencia de "weighted", la variante lastrada de un
+// movimiento bodyweight) y los ergómetros de cardio, donde el esfuerzo se
+// regula por resistencia/velocidad de la máquina, no por un peso que el
+// usuario cargue o sostenga.
+const NO_WEIGHT_EQUIPMENT = new Set([
+  'body weight',
+  'elliptical machine',
+  'stationary bike',
+  'stepmill machine',
+  'skierg machine',
+  'upper body ergometer',
+]);
+
 export function isBodyweightExercise(equipment: string): boolean {
-  return equipment.toLowerCase() === 'body weight';
+  return NO_WEIGHT_EQUIPMENT.has(equipment.toLowerCase());
 }
 
 // Opciones de filtro para el UI
