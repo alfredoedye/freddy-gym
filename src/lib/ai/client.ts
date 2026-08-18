@@ -4,7 +4,7 @@
  * (formato "proveedor/modelo", ej. "anthropic/claude-sonnet-5").
  */
 
-import { generateText } from 'ai';
+import { streamText } from 'ai';
 
 interface CallLLMOptions {
   temperature?: number;
@@ -14,7 +14,9 @@ interface CallLLMOptions {
 }
 
 // Tope por llamada: una llamada colgada no puede comerse el presupuesto entero
-// de la función (maxDuration 120s) — con esto quedan ~2 reintentos posibles.
+// de la función (ver maxDuration en la route de generación) — generate-plan.ts
+// pasa un timeoutMs propio escalado por daysPerWeek; este default solo aplica
+// a llamadas que no lo especifican.
 const DEFAULT_TIMEOUT_MS = 45_000;
 
 interface LLMResponse {
@@ -23,6 +25,7 @@ interface LLMResponse {
     inputTokens: number;
     outputTokens: number;
   };
+  finishReason?: string;
 }
 
 const DEFAULT_MODEL = 'anthropic/claude-sonnet-5';
@@ -46,7 +49,15 @@ export async function callLLM(
     ? '\n\nIMPORTANTE: Responde ÚNICAMENTE con JSON válido. Sin texto adicional, sin markdown, sin bloques de código.'
     : '';
 
-  const result = await generateText({
+  // streamText en vez de generateText: para respuestas largas (planes de 6 días
+  // generan varios miles de tokens de JSON), una llamada no-streaming se estaba
+  // cortando alrededor de los 65-70s independientemente del abortSignal que le
+  // pasábamos (170s en una prueba) — algo en el camino (probablemente el proxy
+  // de AI Gateway) le pone un techo a una respuesta bufferizada de una sola vez
+  // y la devuelve como "completa" aunque el modelo no haya terminado, produciendo
+  // JSON truncado a mitad de un campo. Streameando, la conexión se mantiene viva
+  // mientras sigan llegando chunks en vez de depender de ese límite.
+  const result = streamText({
     model: process.env.AI_GATEWAY_MODEL || DEFAULT_MODEL,
     system: systemPrompt + jsonInstruction,
     prompt: userPrompt,
@@ -55,14 +66,23 @@ export async function callLLM(
     abortSignal: AbortSignal.timeout(timeoutMs),
   });
 
+  let content = '';
+  for await (const chunk of result.textStream) {
+    content += chunk;
+  }
+
+  const usage = await result.usage;
+  const finishReason = await result.finishReason;
+
   return {
-    content: result.text,
-    usage: result.usage
+    content,
+    usage: usage
       ? {
-          inputTokens: result.usage.inputTokens ?? 0,
-          outputTokens: result.usage.outputTokens ?? 0,
+          inputTokens: usage.inputTokens ?? 0,
+          outputTokens: usage.outputTokens ?? 0,
         }
       : undefined,
+    finishReason,
   };
 }
 

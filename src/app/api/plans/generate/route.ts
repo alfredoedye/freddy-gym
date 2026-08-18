@@ -11,9 +11,11 @@ import { generateTrainingPlan } from '@/lib/ai/generate-plan';
 import { savePlanToDatabase } from '@/lib/ai/save-plan';
 import { GeneratePlanRequestSchema } from '@/lib/ai/schemas';
 
-// La generación reintenta hasta 3 veces contra el LLM (ver MAX_RETRIES en generate-plan.ts);
-// en el peor caso puede superar el timeout por default de las funciones de Vercel.
-export const maxDuration = 120;
+// La generación reintenta hasta 3 veces contra el LLM (ver MAX_RETRIES en generate-plan.ts),
+// y el presupuesto de tokens/tiempo por llamada escala con daysPerWeek — un plan de 6 días
+// necesita llamadas más largas que uno de 3 (ver maxTokensFor/timeoutMsFor). 120s alcanzaba
+// para 3 días pero dejaba a los planes de más días sin margen para más de un intento largo.
+export const maxDuration = 280;
 
 // Guard de idempotencia: si el usuario ya tiene un plan creado hace menos de
 // esto, un nuevo POST devuelve ese plan en vez de generar (y facturar) otro.

@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 const OPTION_BASE =
-  'rounded-md border text-center font-medium transition-colors duration-150 ease-out-quint';
+  'rounded-md border text-center font-medium transition-colors duration-150 ease-out-quint disabled:pointer-events-none disabled:opacity-50';
 const OPTION_SELECTED = 'border-primary bg-accent text-accent-text';
 const OPTION_UNSELECTED = 'border-border bg-card text-foreground hover:border-muted-foreground';
 
@@ -116,6 +116,30 @@ function CreatePlanContent() {
   const [loadingMessage, setLoadingMessage] = useState('');
   const [error, setError] = useState('');
   const [prefilledFromPrevious, setPrefilledFromPrevious] = useState(false);
+  const [activePlanName, setActivePlanName] = useState<string | null>(null);
+
+  // Si ya hay un plan ACTIVE, generar uno nuevo lo pausa (ver save-plan.ts —
+  // invariante de un solo plan activo). Avisar antes, no después: sin esto el
+  // usuario se entera de que "perdió" su plan actual recién al volver al inicio.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/plans');
+        if (!res.ok) return;
+        const data = await res.json();
+        const active = (data.plans || []).find(
+          (p: { status: string }) => p.status === 'ACTIVE'
+        );
+        if (!cancelled) setActivePlanName(active?.name ?? null);
+      } catch {
+        // Sin el aviso no se rompe nada — generar sigue funcionando igual.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Prefill desde el plan anterior (flujo post-feedback): el usuario ya tomó
   // estas decisiones — no obligarlo a tomarlas de nuevo.
@@ -242,6 +266,16 @@ function CreatePlanContent() {
       </header>
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Aviso de plan activo — generar uno nuevo lo pausa */}
+        {activePlanName && (
+          <div className="rounded-md border border-border bg-secondary/50 p-4">
+            <p className="text-sm text-foreground/80">
+              Ya tenés un plan activo (&quot;{activePlanName}&quot;). Generar uno nuevo lo va a
+              pausar — vas a poder retomarlo después desde Mis Planes.
+            </p>
+          </div>
+        )}
+
         {/* Aviso de prefill post-feedback */}
         {prefilledFromPrevious && (
           <div className="rounded-md border border-border bg-secondary/50 p-4">
@@ -263,6 +297,7 @@ function CreatePlanContent() {
               <button
                 key={g.value}
                 onClick={() => setGoal(g.value)}
+                disabled={isGenerating}
                 className={`w-full text-left p-4 ${OPTION_BASE} ${goal === g.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 <span className="text-lg font-medium">{g.label}</span>
@@ -284,6 +319,7 @@ function CreatePlanContent() {
               <button
                 key={d.value}
                 onClick={() => setDurationWeeks(d.value)}
+                disabled={isGenerating}
                 className={`p-3 ${OPTION_BASE} ${durationWeeks === d.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 {d.label}
@@ -303,6 +339,7 @@ function CreatePlanContent() {
               <button
                 key={d.value}
                 onClick={() => handleDaysChange(d.value)}
+                disabled={isGenerating}
                 className={`p-3 ${OPTION_BASE} ${daysPerWeek === d.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 {d.label}
@@ -322,6 +359,7 @@ function CreatePlanContent() {
               <button
                 key={s.value}
                 onClick={() => setSplit(s.value)}
+                disabled={isGenerating}
                 className={`w-full text-left p-4 ${OPTION_BASE} ${split === s.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 {s.label}
@@ -341,6 +379,7 @@ function CreatePlanContent() {
               <button
                 key={t.value}
                 onClick={() => setTimePerSession(t.value)}
+                disabled={isGenerating}
                 className={`p-3 ${OPTION_BASE} ${timePerSession === t.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 {t.label}
