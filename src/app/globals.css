@@ -86,12 +86,19 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    /* Red de seguridad: ningún elemento (nombre de ejercicio, nota de IA, etc.)
+       debe poder empujar el ancho de la página más allá del viewport. */
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground font-sans;
     font-size: calc(16px * var(--font-scale, 1));
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
 
   /* Asegurar touch targets mínimos en elementos interactivos */

@@ -61,7 +61,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
             </span>
           )}
           {/* Nombre del ejercicio */}
-          <h2 className="font-display text-xl font-bold leading-tight mb-1">{exercise.name}</h2>
+          <h2 className="font-display text-xl font-bold leading-tight mb-1 break-words">{exercise.name}</h2>
 
           {/* Series × Reps */}
           <p className="text-lg text-foreground font-semibold font-mono">
@@ -84,7 +84,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
         {/* Notas del plan */}
         {notes && (
           <div className="bg-secondary/50 rounded-lg p-3 mb-3">
-            <p className="text-sm text-foreground/80">💡 {notes}</p>
+            <p className="text-sm text-foreground/80 break-words">💡 {notes}</p>
           </div>
         )}
 
@@ -100,7 +100,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
         {/* Instrucciones expandidas */}
         {showInstructions && exercise.instructionsEs && (
           <div className="mt-2 bg-secondary/50 rounded-lg p-3">
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">
+            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line break-words">
               {exercise.instructionsEs}
             </p>
           </div>

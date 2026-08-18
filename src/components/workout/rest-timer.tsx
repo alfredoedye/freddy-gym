@@ -170,9 +170,12 @@ export function RestTimer({ duration, isActive, sessionId, onComplete, onSkip }:
   const seconds = timeRemaining % 60;
   const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-  // Urgencia en los últimos 5 segundos (única excepción de color al Volt)
+  // Urgencia en los últimos 5 segundos (única excepción de color al Volt).
+  // Fuera de eso, el anillo usa accent-text (Moss en claro, Volt en oscuro):
+  // Volt puro como texto/trazo fino sobre bone-50 es casi ilegible en modo
+  // claro (The Fill, Not Ink Rule — ver DESIGN.md).
   const isUrgent = timeRemaining <= 5;
-  const ringColorClass = isUrgent ? 'text-destructive' : 'text-primary';
+  const ringColorClass = isUrgent ? 'text-destructive' : 'text-accent-text';
 
   return (
     <div ref={containerRef} className="flex flex-col items-center py-6 px-4 bg-secondary/50 border-y border-border">
@@ -193,12 +196,9 @@ export function RestTimer({ duration, isActive, sessionId, onComplete, onSkip }:
             r="54"
             fill="none"
             stroke="currentColor"
-            className={`${ringColorClass} transition-all duration-1000 ease-linear`}
-            style={{
-              filter: isUrgent
-                ? undefined
-                : 'drop-shadow(0 0 6px rgba(212, 255, 61, 0.5))',
-            }}
+            className={`${ringColorClass} transition-all duration-1000 ease-linear ${
+              isUrgent ? '' : 'dark:drop-shadow-[0_0_6px_rgba(212,255,61,0.5)]'
+            }`}
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={circumference}

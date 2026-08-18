@@ -12,14 +12,16 @@ interface ExerciseProgressProps {
 
 export function ExerciseProgress({ exercises, currentIndex, getProgress, onJumpTo }: ExerciseProgressProps) {
   return (
-    <div className="px-4 py-3 bg-secondary/50">
+    <div className="px-4 py-2 bg-secondary/50">
       {/* Texto de progreso */}
-      <p className="text-sm text-muted-foreground mb-2 text-center font-medium font-mono">
+      <p className="text-xs text-muted-foreground mb-1.5 text-center font-medium font-mono">
         Ejercicio {currentIndex + 1} de {exercises.length}
       </p>
 
-      {/* Dots de progreso */}
-      <div className="flex items-center justify-center gap-2 flex-wrap">
+      {/* Barra segmentada — una sola fila sin importar cuántos ejercicios tenga
+          el día (a diferencia de los dots anteriores, que con 8+ ejercicios
+          envolvían a una segunda fila y comían espacio vertical). */}
+      <div className="flex items-center gap-1">
         {exercises.map((exercise, index) => {
           const { completed, total } = getProgress(exercise.exerciseId);
           const isComplete = completed >= total;
@@ -29,16 +31,19 @@ export function ExerciseProgress({ exercises, currentIndex, getProgress, onJumpT
             <button
               key={exercise.exerciseId}
               onClick={() => onJumpTo(index)}
-              className={`min-w-touch min-h-touch rounded-full flex items-center justify-center text-xs font-bold font-mono transition-transform duration-200 ease-out-quint active:scale-95 ${
-                isCurrent
-                  ? 'bg-primary text-primary-foreground scale-110 shadow-volt-glow'
-                  : isComplete
-                    ? 'bg-secondary text-foreground/70 border border-border'
-                    : 'bg-secondary text-muted-foreground'
-              }`}
+              className="flex-1 min-h-touch flex items-center justify-center"
               aria-label={`${exercise.name} - ${completed}/${total} series`}
+              aria-current={isCurrent ? 'step' : undefined}
             >
-              {isComplete ? '✓' : index + 1}
+              <span
+                className={`block w-full rounded-full transition-all duration-200 ease-out-quint ${
+                  isCurrent
+                    ? 'h-2 bg-primary shadow-volt-glow'
+                    : isComplete
+                      ? 'h-1.5 bg-foreground/40'
+                      : 'h-1.5 bg-foreground/15'
+                }`}
+              />
             </button>
           );
         })}
