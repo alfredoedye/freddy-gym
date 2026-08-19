@@ -55,6 +55,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
+  // Si está autenticado, ya tiene perfil, y va a onboarding → no tiene nada
+  // que hacer ahí. Sin este chequeo (SKIP_PROFILE_CHECK excluye /onboarding
+  // del control de abajo justamente para no loopear a quien SÍ lo necesita,
+  // pero eso también significa que nadie lo saca de ahí en sentido inverso)
+  // volver con el botón atrás o una URL directa re-renderizaba el flujo de
+  // 5 pasos desde cero para alguien que ya lo completó.
+  if (token && pathname.startsWith('/onboarding') && token.hasProfile === true) {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   // Si está autenticado, verificar si tiene perfil. Solo aplica a páginas:
   // redirigir un fetch de API a /onboarding devolvería HTML donde el cliente
   // espera JSON (las rutas de API validan sesión por su cuenta).

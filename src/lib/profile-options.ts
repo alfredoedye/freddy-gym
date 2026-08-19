@@ -31,3 +31,21 @@ export const FONT_SIZES: { value: FontSize; icon: string; title: string; descrip
   { value: 'LARGE', icon: 'A', title: 'Grande', description: 'Más fácil de leer' },
   { value: 'EXTRA_LARGE', icon: 'A', title: 'Extra grande', description: 'Máxima legibilidad' },
 ];
+
+// Rangos físicos — deben coincidir con los min/max del schema de /api/profile
+// (ver route.ts). Onboarding y edición de perfil solo mostraban estos números
+// como atributos min/max del <input>, sin chequearlos antes de habilitar
+// "Siguiente"/"Guardar" — un valor fuera de rango viajaba intacto hasta que el
+// servidor lo rechazaba con 400.
+export const HEIGHT_RANGE = { min: 100, max: 230 };
+export const WEIGHT_RANGE = { min: 30, max: 200 };
+
+export function isHeightValid(height: string): boolean {
+  const n = parseFloat(height);
+  return height !== '' && !Number.isNaN(n) && n >= HEIGHT_RANGE.min && n <= HEIGHT_RANGE.max;
+}
+
+export function isWeightValid(weight: string): boolean {
+  const n = parseFloat(weight);
+  return weight !== '' && !Number.isNaN(n) && n >= WEIGHT_RANGE.min && n <= WEIGHT_RANGE.max;
+}

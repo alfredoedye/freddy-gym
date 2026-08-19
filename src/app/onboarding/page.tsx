@@ -3,13 +3,23 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 import { StepIndicator } from '@/components/onboarding/step-indicator';
 import { GoalCard } from '@/components/onboarding/goal-card';
 import { NumberInput } from '@/components/onboarding/number-input';
 import { calculateAge } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
-import { GOALS, LEVELS, SEXES, type Goal, type Level, type Sex } from '@/lib/profile-options';
+import {
+  GOALS,
+  LEVELS,
+  SEXES,
+  isHeightValid,
+  isWeightValid,
+  type Goal,
+  type Level,
+  type Sex,
+} from '@/lib/profile-options';
 
 // Rango de fechas válido para el date picker (14 a 80 años)
 const today = new Date();
@@ -44,9 +54,9 @@ export default function OnboardingPage() {
       case 0:
         return name.trim().length >= 2;
       case 1: {
-        if (birthDate === '' || height === '' || weight === '') return false;
+        if (birthDate === '') return false;
         const age = calculateAge(new Date(birthDate));
-        return age >= 14 && age <= 80;
+        return age >= 14 && age <= 80 && isHeightValid(height) && isWeightValid(weight);
       }
       case 2:
         return sex !== null;
@@ -104,7 +114,7 @@ export default function OnboardingPage() {
       }, 1500);
     } catch (error) {
       console.error('Error:', error);
-      alert('Hubo un error al guardar tu perfil. Intentá de nuevo.');
+      toast.error('Hubo un error al guardar tu perfil. Intentá de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -192,6 +202,7 @@ export default function OnboardingPage() {
                   placeholder="175"
                   min={100}
                   max={230}
+                  invalid={height !== '' && !isHeightValid(height)}
                 />
                 <NumberInput
                   label="Peso"
@@ -202,6 +213,7 @@ export default function OnboardingPage() {
                   min={30}
                   max={200}
                   step={0.5}
+                  invalid={weight !== '' && !isWeightValid(weight)}
                 />
               </div>
             </div>

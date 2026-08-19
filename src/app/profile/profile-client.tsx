@@ -17,6 +17,8 @@ import {
   LEVELS,
   SEXES,
   FONT_SIZES,
+  isHeightValid,
+  isWeightValid,
   type Goal,
   type Level,
   type Sex,
@@ -69,8 +71,8 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
     age !== null &&
     age >= 14 &&
     age <= 80 &&
-    height !== '' &&
-    weight !== '' &&
+    isHeightValid(height) &&
+    isWeightValid(weight) &&
     sex !== null &&
     goal !== null &&
     level !== null;
@@ -197,8 +199,12 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
                 max={230}
                 value={height}
                 onChange={(e) => setHeight(e.target.value)}
+                aria-invalid={height !== '' && !isHeightValid(height)}
                 className="font-mono"
               />
+              {height !== '' && !isHeightValid(height) && (
+                <p className="text-sm text-destructive">Tiene que estar entre 100 y 230 cm</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="weight">Peso (kg)</Label>
@@ -211,8 +217,12 @@ export function ProfileClient({ name: initialName, email, profile }: ProfileClie
                 max={200}
                 value={weight}
                 onChange={(e) => setWeight(e.target.value)}
+                aria-invalid={weight !== '' && !isWeightValid(weight)}
                 className="font-mono"
               />
+              {weight !== '' && !isWeightValid(weight) && (
+                <p className="text-sm text-destructive">Tiene que estar entre 30 y 200 kg</p>
+              )}
             </div>
           </div>
 
