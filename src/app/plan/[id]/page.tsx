@@ -3,7 +3,7 @@
 /**
  * Página de vista del plan generado.
  * Muestra todos los días con sus ejercicios, permite activar el plan,
- * editar la prescripción (series/reps/descanso/notas) o reemplazar un
+ * editar la prescripción (series/reps/descanso) o reemplazar un
  * ejercicio, y eliminar/cancelar el plan.
  */
 
@@ -23,10 +23,12 @@ import {
   Check,
   X,
   Trash2,
+  Repeat,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { ExercisePickerDialog } from '@/components/plan/exercise-picker-dialog';
 import { goalLabels, splitLabels } from '@/lib/plan-labels';
 
 // Tipos locales (espejo del response de la API)
@@ -424,6 +426,7 @@ function DayCard({
                       <EditableExerciseRow
                         key={ex.id}
                         exercise={ex}
+                        dayExercises={day.exercises}
                         phase={phase}
                         planId={planId}
                         onSaved={onExerciseSaved}
@@ -474,12 +477,14 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
 
 function EditableExerciseRow({
   exercise: ex,
+  dayExercises,
   phase,
   planId,
   onSaved,
   onDirtyChange,
 }: {
   exercise: PlanExerciseView;
+  dayExercises: PlanExerciseView[];
   phase: ExercisePhase;
   planId: string;
   onSaved: (updated: PlanExerciseView) => void;
@@ -489,13 +494,16 @@ function EditableExerciseRow({
   const [repsMin, setRepsMin] = useState(ex.repsMin);
   const [repsMax, setRepsMax] = useState(ex.repsMax);
   const [restSeconds, setRestSeconds] = useState(ex.restSeconds);
+  const [pendingExercise, setPendingExercise] = useState(ex.exercise);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const dirty =
     sets !== ex.sets ||
     repsMin !== ex.repsMin ||
     repsMax !== ex.repsMax ||
-    restSeconds !== ex.restSeconds;
+    restSeconds !== ex.restSeconds ||
+    pendingExercise.id !== ex.exercise.id;
 
   // Avisar al padre para que pueda confirmar antes de descartar cambios al
   // salir del modo edición (ver handleToggleEditing en PlanViewPage).
@@ -505,11 +513,18 @@ function EditableExerciseRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dirty, ex.id]);
 
+  // Otros ejercicios del mismo día — para no dejar elegir uno que ya está
+  // usado (creaba duplicados silenciosos sin ningún aviso).
+  const otherExerciseIds = dayExercises
+    .filter((other) => other.id !== ex.id)
+    .map((other) => other.exercise.id);
+
   const resetToSaved = () => {
     setSets(ex.sets);
     setRepsMin(ex.repsMin);
     setRepsMax(ex.repsMax);
     setRestSeconds(ex.restSeconds);
+    setPendingExercise(ex.exercise);
   };
 
   const handleSave = async () => {
@@ -523,7 +538,13 @@ function EditableExerciseRow({
       const res = await fetch(`/api/plans/${planId}/exercises/${ex.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sets, repsMin, repsMax, restSeconds }),
+        body: JSON.stringify({
+          sets,
+          repsMin,
+          repsMax,
+          restSeconds,
+          ...(pendingExercise.id !== ex.exercise.id ? { exerciseId: pendingExercise.id } : {}),
+        }),
       });
 
       const data = await res.json();
@@ -545,10 +566,10 @@ function EditableExerciseRow({
   return (
     <div className="rounded-md border border-border p-3 space-y-3">
       <div className="flex items-center gap-3">
-        {ex.exercise.imageUrl ? (
+        {pendingExercise.imageUrl ? (
           <img
-            src={ex.exercise.imageUrl}
-            alt={ex.exercise.name}
+            src={pendingExercise.imageUrl}
+            alt={pendingExercise.name}
             className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
           />
         ) : (
@@ -556,14 +577,22 @@ function EditableExerciseRow({
             <Dumbbell className="w-5 h-5 text-muted-foreground" />
           </div>
         )}
-        {/* El ejercicio en sí y sus notas son parte de la prescripción
-            generada, no algo para tocar desde acá — cambiarlo de vuelta
-            significa reemplazarlo por otro ejercicio entero, no ajustar un
-            número. Este modo solo edita series/reps/descanso. */}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-base truncate">{ex.exercise.name}</p>
+          <p className="font-medium text-base leading-tight line-clamp-2">{pendingExercise.name}</p>
           {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
         </div>
+        {/* Acción deliberadamente separada de los campos de series/reps/descanso
+            de abajo — cambiar el ejercicio es reemplazarlo por otro entero, no
+            ajustar un número de la prescripción actual. Solo ícono (en vez del
+            pill con texto original) para no comerle ancho al nombre — algunos
+            son largos y ya truncaban bastante antes de agregar esta acción. */}
+        <button
+          onClick={() => setPickerOpen(true)}
+          className="flex-shrink-0 flex items-center justify-center min-h-touch min-w-touch rounded-full border border-border bg-secondary text-foreground transition-colors duration-150 active:bg-muted"
+          aria-label="Cambiar ejercicio"
+        >
+          <Repeat className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Dos filas de 2 columnas en vez de 4 columnas iguales: con la escala
@@ -593,6 +622,16 @@ function EditableExerciseRow({
           </Button>
         </div>
       )}
+
+      <ExercisePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        excludeIds={otherExerciseIds}
+        onSelect={(selected) => {
+          setPendingExercise(selected);
+          setPickerOpen(false);
+        }}
+      />
     </div>
   );
 }
