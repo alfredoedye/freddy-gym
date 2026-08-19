@@ -28,7 +28,10 @@ export async function GET(
           orderBy: { dayNumber: 'asc' },
           include: {
             exercises: {
-              orderBy: { order: 'asc' },
+              // El cliente (plan/[id]/page.tsx) además filtra y ordena por
+              // fase antes de mostrar, pero traerlo ya así evita depender de
+              // eso en cualquier otro consumidor futuro de este endpoint.
+              orderBy: [{ phase: 'asc' }, { order: 'asc' }],
               include: {
                 exercise: {
                   select: {

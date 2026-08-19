@@ -26,7 +26,13 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
     where: { id: dayId },
     include: {
       exercises: {
-        orderBy: { order: 'asc' },
+        // "order" es un entero por día, no por fase — agregar/reordenar
+        // ejercicios en modo edición (ver plan/[id]/page.tsx) puede dejar a un
+        // WARMUP con un order más alto que ejercicios MAIN/COOLDOWN (el orden
+        // relativo dentro de su fase sigue siendo correcto, pero no el global).
+        // Ordenar por fase primero garantiza WARMUP → MAIN → COOLDOWN siempre,
+        // sin depender de que los enteros de "order" queden agrupados por fase.
+        orderBy: [{ phase: 'asc' }, { order: 'asc' }],
         include: {
           exercise: true,
         },

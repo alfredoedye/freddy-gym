@@ -29,7 +29,10 @@ export default async function Dashboard() {
         include: {
           exercises: {
             include: { exercise: true },
-            orderBy: { order: 'asc' },
+            // Ver comentario en workout/[dayId]/page.tsx: "order" no está
+            // garantizado a quedar agrupado por fase después de agregar o
+            // reordenar ejercicios en modo edición.
+            orderBy: [{ phase: 'asc' }, { order: 'asc' }],
           },
         },
         orderBy: { dayNumber: 'asc' },
