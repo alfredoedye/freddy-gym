@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { getBodyPartLabel } from '@/lib/exercise-utils';
+import { getBodyPartLabel, getEquipmentLabel } from '@/lib/exercise-utils';
 
 interface ExerciseGridCardProps {
   exercise: {
@@ -49,7 +49,7 @@ export function ExerciseGridCard({ exercise }: ExerciseGridCardProps) {
             {getBodyPartLabel(exercise.bodyPart)}
           </span>
           <span className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {exercise.equipment}
+            {getEquipmentLabel(exercise.equipment)}
           </span>
         </div>
       </div>

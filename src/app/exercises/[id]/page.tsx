@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Frown } from 'lucide-react';
 import { ExerciseDetailHeader } from '@/components/exercises/exercise-detail-header';
-import { getBodyPartLabel, getEquipmentLabel } from '@/lib/exercise-utils';
+import { getBodyPartLabel, getEquipmentLabel, getMuscleLabel } from '@/lib/exercise-utils';
 
 interface Exercise {
   id: string;
@@ -147,14 +147,14 @@ export default function ExerciseDetailPage() {
             {getEquipmentLabel(exercise.equipment)}
           </span>
           <span className="rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-text">
-            {exercise.target}
+            {getMuscleLabel(exercise.target)}
           </span>
           {exercise.secondaryMuscles?.map((muscle) => (
             <span
               key={muscle}
               className="rounded-full bg-secondary/60 px-3 py-1 text-sm font-medium text-muted-foreground"
             >
-              {muscle}
+              {getMuscleLabel(muscle)}
             </span>
           ))}
         </div>
