@@ -1,7 +1,8 @@
 /**
- * API Route: PATCH /api/plans/[planId]/exercises/[exerciseId]
- * Edita la prescripción de un ejercicio dentro de un plan (series, reps,
- * descanso, notas) y/o lo reemplaza por otro ejercicio del catálogo.
+ * API Route: PATCH/DELETE /api/plans/[planId]/exercises/[exerciseId]
+ * PATCH edita la prescripción de un ejercicio dentro de un plan (series, reps,
+ * descanso, notas, orden) y/o lo reemplaza por otro ejercicio del catálogo.
+ * DELETE lo quita del día por completo.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +19,10 @@ const UpdatePlanExerciseSchema = z
     restSeconds: z.number().int().min(0).max(600).optional(),
     notes: z.string().max(200).nullable().optional(),
     exerciseId: z.string().min(1).optional(),
+    // Solo se usa para reordenar dentro de la misma fase (ver handleMove en
+    // plan/[id]/page.tsx) — el cliente calcula el swap entre dos vecinos y
+    // manda dos PATCH, uno por cada uno con su nuevo valor de order.
+    order: z.number().int().min(0).optional(),
   })
   .refine(
     (data) =>
@@ -83,6 +88,36 @@ export async function PATCH(
     return NextResponse.json({ exercise: updated });
   } catch (error) {
     console.error('Error en PATCH /api/plans/[planId]/exercises/[exerciseId]:', error);
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { planId: string; exerciseId: string } }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    const planExercise = await prisma.planExercise.findFirst({
+      where: {
+        id: params.exerciseId,
+        planDay: { planId: params.planId, plan: { userId: session.user.id } },
+      },
+    });
+
+    if (!planExercise) {
+      return NextResponse.json({ error: 'Ejercicio no encontrado' }, { status: 404 });
+    }
+
+    await prisma.planExercise.delete({ where: { id: planExercise.id } });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error en DELETE /api/plans/[planId]/exercises/[exerciseId]:', error);
     return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 }

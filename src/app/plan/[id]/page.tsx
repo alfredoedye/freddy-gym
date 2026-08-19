@@ -24,6 +24,7 @@ import {
   X,
   Trash2,
   Repeat,
+  Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,12 @@ interface PlanView {
 }
 
 const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+// Botón circular de acción compartido por mover/cambiar/quitar en
+// EditableExerciseRow — mismo tamaño y estilo para las cuatro acciones sobre
+// el ejercicio en sí, todas separadas de los campos numéricos de abajo.
+const ACTION_BUTTON =
+  'flex-shrink-0 flex items-center justify-center min-h-touch min-w-touch rounded-full border border-border bg-secondary text-foreground transition-colors duration-150 active:bg-muted disabled:opacity-40 disabled:pointer-events-none';
 
 export default function PlanViewPage() {
   const params = useParams();
@@ -174,6 +181,73 @@ export default function PlanViewPage() {
         ),
       };
     });
+  };
+
+  const handleExerciseDeleted = (planDayId: string, exerciseId: string) => {
+    setPlan((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        planDays: prev.planDays.map((day) =>
+          day.id !== planDayId
+            ? day
+            : { ...day, exercises: day.exercises.filter((ex) => ex.id !== exerciseId) }
+        ),
+      };
+    });
+  };
+
+  const handleExerciseAdded = (planDayId: string, created: PlanExerciseView) => {
+    setPlan((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        planDays: prev.planDays.map((day) =>
+          day.id !== planDayId ? day : { ...day, exercises: [...day.exercises, created] }
+        ),
+      };
+    });
+  };
+
+  // Reordena moviendo un ejercicio contra su vecino dentro de la MISMA fase
+  // (intercambia sus valores de "order" con dos PATCH) y refresca el plan.
+  // A diferencia de guardar/agregar/borrar (que patchean el estado local a
+  // mano), acá es más simple releer el plan completo que reconstruir el
+  // array ordenado a mano — el reorder no es una acción frecuente.
+  const handleReorder = async (planDayId: string, exerciseId: string, direction: 'up' | 'down') => {
+    const day = plan?.planDays.find((d) => d.id === planDayId);
+    const current = day?.exercises.find((e) => e.id === exerciseId);
+    if (!day || !current) return;
+
+    const siblings = day.exercises
+      .filter((e) => e.phase === current.phase)
+      .sort((a, b) => a.order - b.order);
+    const index = siblings.findIndex((e) => e.id === exerciseId);
+    const neighbor = siblings[direction === 'up' ? index - 1 : index + 1];
+    if (!neighbor) return;
+
+    try {
+      const [resA, resB] = await Promise.all([
+        fetch(`/api/plans/${planId}/exercises/${current.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: neighbor.order }),
+        }),
+        fetch(`/api/plans/${planId}/exercises/${neighbor.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: current.order }),
+        }),
+      ]);
+      if (!resA.ok || !resB.ok) {
+        toast.error('No se pudo reordenar');
+        return;
+      }
+      await fetchPlan();
+    } catch (err) {
+      console.error('Error al reordenar:', err);
+      toast.error('Error de conexión');
+    }
   };
 
   const handleDeletePlan = async () => {
@@ -305,6 +379,9 @@ export default function PlanViewPage() {
                 isEditing={isEditing}
                 planId={planId}
                 onExerciseSaved={(updated) => handleExerciseSaved(day.id, updated)}
+                onExerciseDeleted={(exerciseId) => handleExerciseDeleted(day.id, exerciseId)}
+                onExerciseAdded={(created) => handleExerciseAdded(day.id, created)}
+                onMove={(exerciseId, direction) => handleReorder(day.id, exerciseId, direction)}
                 onDirtyChange={handleDirtyChange}
               />
             ))}
@@ -363,6 +440,9 @@ function DayCard({
   isEditing,
   planId,
   onExerciseSaved,
+  onExerciseDeleted,
+  onExerciseAdded,
+  onMove,
   onDirtyChange,
 }: {
   day: PlanDayView;
@@ -372,8 +452,39 @@ function DayCard({
   isEditing: boolean;
   planId: string;
   onExerciseSaved: (updated: PlanExerciseView) => void;
+  onExerciseDeleted: (exerciseId: string) => void;
+  onExerciseAdded: (created: PlanExerciseView) => void;
+  onMove: (exerciseId: string, direction: 'up' | 'down') => void;
   onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
+  const [addingPhase, setAddingPhase] = useState<ExercisePhase | null>(null);
+  const [adding, setAdding] = useState(false);
+
+  const handleAddExercise = async (selected: { id: string }) => {
+    if (!addingPhase) return;
+    setAdding(true);
+    try {
+      const res = await fetch(`/api/plans/${planId}/days/${day.id}/exercises`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exerciseId: selected.id, phase: addingPhase }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'No se pudo agregar el ejercicio');
+        return;
+      }
+      onExerciseAdded(data.exercise);
+      toast.success('Ejercicio agregado');
+      setAddingPhase(null);
+    } catch (err) {
+      console.error('Error al agregar ejercicio:', err);
+      toast.error('Error de conexión');
+    } finally {
+      setAdding(false);
+    }
+  };
+
   if (day.isRest) {
     return (
       <div className="p-4 rounded-lg border border-border bg-secondary/50 opacity-60">
@@ -412,8 +523,12 @@ function DayCard({
       {expanded && (
         <div className="border-t border-border px-4 pb-4 pt-3">
           {(['WARMUP', 'MAIN', 'COOLDOWN'] as const).map((phase) => {
-            const exercisesInPhase = day.exercises.filter((ex) => ex.phase === phase);
-            if (exercisesInPhase.length === 0) return null;
+            const exercisesInPhase = day.exercises
+              .filter((ex) => ex.phase === phase)
+              .sort((a, b) => a.order - b.order);
+            // En modo edición mostramos igual la sección aunque esté vacía —
+            // si no, no había forma de agregar el primer ejercicio de esa fase.
+            if (exercisesInPhase.length === 0 && !isEditing) return null;
 
             return (
               <div key={phase} className="mb-4 last:mb-0">
@@ -421,7 +536,7 @@ function DayCard({
                   {phaseLabels[phase]}
                 </p>
                 <div className="space-y-3">
-                  {exercisesInPhase.map((ex) =>
+                  {exercisesInPhase.map((ex, index) =>
                     isEditing ? (
                       <EditableExerciseRow
                         key={ex.id}
@@ -429,7 +544,11 @@ function DayCard({
                         dayExercises={day.exercises}
                         phase={phase}
                         planId={planId}
+                        isFirst={index === 0}
+                        isLast={index === exercisesInPhase.length - 1}
                         onSaved={onExerciseSaved}
+                        onDeleted={onExerciseDeleted}
+                        onMove={onMove}
                         onDirtyChange={onDirtyChange}
                       />
                     ) : (
@@ -437,11 +556,27 @@ function DayCard({
                     )
                   )}
                 </div>
+                {isEditing && (
+                  <button
+                    onClick={() => setAddingPhase(phase)}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-border py-3 text-sm font-medium text-muted-foreground transition-colors duration-150 active:bg-secondary"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar ejercicio
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       )}
+
+      <ExercisePickerDialog
+        open={addingPhase !== null}
+        onOpenChange={(open) => !open && !adding && setAddingPhase(null)}
+        excludeIds={day.exercises.map((e) => e.exercise.id)}
+        onSelect={handleAddExercise}
+      />
     </div>
   );
 }
@@ -480,14 +615,22 @@ function EditableExerciseRow({
   dayExercises,
   phase,
   planId,
+  isFirst,
+  isLast,
   onSaved,
+  onDeleted,
+  onMove,
   onDirtyChange,
 }: {
   exercise: PlanExerciseView;
   dayExercises: PlanExerciseView[];
   phase: ExercisePhase;
   planId: string;
+  isFirst: boolean;
+  isLast: boolean;
   onSaved: (updated: PlanExerciseView) => void;
+  onDeleted: (exerciseId: string) => void;
+  onMove: (exerciseId: string, direction: 'up' | 'down') => void;
   onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
   const [sets, setSets] = useState(ex.sets);
@@ -497,6 +640,7 @@ function EditableExerciseRow({
   const [pendingExercise, setPendingExercise] = useState(ex.exercise);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const dirty =
     sets !== ex.sets ||
@@ -563,6 +707,27 @@ function EditableExerciseRow({
     }
   };
 
+  const handleDelete = async () => {
+    if (!window.confirm(`¿Quitar "${pendingExercise.name}" de este día?`)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/plans/${planId}/exercises/${ex.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'No se pudo quitar el ejercicio');
+        return;
+      }
+      onDeleted(ex.id);
+      toast.success('Ejercicio quitado');
+    } catch (err) {
+      console.error('Error al quitar ejercicio:', err);
+      toast.error('Error de conexión');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="rounded-md border border-border p-3 space-y-3">
       <div className="flex items-center gap-3">
@@ -581,17 +746,46 @@ function EditableExerciseRow({
           <p className="font-medium text-base leading-tight line-clamp-2">{pendingExercise.name}</p>
           {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
         </div>
-        {/* Acción deliberadamente separada de los campos de series/reps/descanso
-            de abajo — cambiar el ejercicio es reemplazarlo por otro entero, no
-            ajustar un número de la prescripción actual. Solo ícono (en vez del
-            pill con texto original) para no comerle ancho al nombre — algunos
-            son largos y ya truncaban bastante antes de agregar esta acción. */}
+      </div>
+
+      {/* Acciones sobre el ejercicio en sí — deliberadamente en su propia fila,
+          separada de los campos de series/reps/descanso de abajo. Mover, cambiar
+          y quitar operan sobre QUÉ ejercicio es, no sobre la prescripción actual. */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => onMove(ex.id, 'up')}
+          disabled={isFirst}
+          className={ACTION_BUTTON}
+          aria-label="Subir"
+        >
+          <ChevronUp className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => onMove(ex.id, 'down')}
+          disabled={isLast}
+          className={ACTION_BUTTON}
+          aria-label="Bajar"
+        >
+          <ChevronDown className="w-4 h-4" />
+        </button>
         <button
           onClick={() => setPickerOpen(true)}
-          className="flex-shrink-0 flex items-center justify-center min-h-touch min-w-touch rounded-full border border-border bg-secondary text-foreground transition-colors duration-150 active:bg-muted"
+          className={ACTION_BUTTON}
           aria-label="Cambiar ejercicio"
         >
           <Repeat className="w-4 h-4" />
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={deleting}
+          className={ACTION_BUTTON}
+          aria-label="Quitar ejercicio"
+        >
+          {deleting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4 text-destructive" />
+          )}
         </button>
       </div>
 
