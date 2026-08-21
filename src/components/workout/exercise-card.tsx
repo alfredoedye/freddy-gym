@@ -24,11 +24,10 @@ interface ExerciseCardProps {
   };
   phase: 'WARMUP' | 'MAIN' | 'COOLDOWN';
   setsInfo: string; // e.g. "4 × 8-12"
-  restSeconds: number;
   notes: string | null;
 }
 
-export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: ExerciseCardProps) {
+export function ExerciseCard({ exercise, phase, setsInfo, notes }: ExerciseCardProps) {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showGifModal, setShowGifModal] = useState(false);
   const mediaUrl = exercise.gifUrl || exercise.imageUrl;
@@ -66,7 +65,7 @@ export function ExerciseCard({ exercise, phase, setsInfo, restSeconds, notes }: 
 
           {/* Series × Reps */}
           <p className="text-lg text-foreground font-semibold font-mono">
-            {setsInfo} · {restSeconds}s descanso
+            {setsInfo}
           </p>
 
           {/* Badges */}

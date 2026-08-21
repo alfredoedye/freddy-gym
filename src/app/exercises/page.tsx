@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Loader2, Search } from 'lucide-react';
+import { ChevronDown, Heart, Loader2, Search } from 'lucide-react';
+import { toast } from 'sonner';
 import { SearchBar } from '@/components/exercises/search-bar';
 import { FilterChips } from '@/components/exercises/filter-chips';
 import { ExerciseGridCard, ExerciseGridCardSkeleton } from '@/components/exercises/exercise-grid-card';
@@ -17,6 +18,7 @@ interface Exercise {
   target: string;
   imageUrl: string | null;
   gifUrl: string | null;
+  isFavorite?: boolean;
 }
 
 export default function ExercisesPage() {
@@ -31,6 +33,7 @@ export default function ExercisesPage() {
   const [search, setSearch] = useState('');
   const [bodyPart, setBodyPart] = useState('todos');
   const [equipment, setEquipment] = useState('todos');
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [showEquipmentFilter, setShowEquipmentFilter] = useState(false);
 
   // Fetch ejercicios
@@ -46,6 +49,7 @@ export default function ExercisesPage() {
       if (search) params.set('search', search);
       if (bodyPart !== 'todos') params.set('bodyPart', bodyPart);
       if (equipment !== 'todos') params.set('equipment', equipment);
+      if (favoritesOnly) params.set('favorites', 'true');
       params.set('page', String(pageNum));
       params.set('limit', '20');
 
@@ -66,7 +70,32 @@ export default function ExercisesPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, bodyPart, equipment]);
+  }, [search, bodyPart, equipment, favoritesOnly]);
+
+  // Marcar/desmarcar favorito con actualización optimista; si la API falla,
+  // se revierte. Con el filtro de favoritos activo, desmarcar saca la card.
+  const toggleFavorite = useCallback(
+    async (exerciseId: string, makeFavorite: boolean) => {
+      setExercises((prev) =>
+        favoritesOnly && !makeFavorite
+          ? prev.filter((ex) => ex.id !== exerciseId)
+          : prev.map((ex) => (ex.id === exerciseId ? { ...ex, isFavorite: makeFavorite } : ex))
+      );
+      if (favoritesOnly && !makeFavorite) setTotal((prev) => Math.max(0, prev - 1));
+
+      try {
+        const res = await fetch(`/api/exercises/${exerciseId}/favorite`, {
+          method: makeFavorite ? 'POST' : 'DELETE',
+        });
+        if (!res.ok) throw new Error('favorite toggle failed');
+      } catch {
+        toast.error('No se pudo actualizar el favorito');
+        // Revertir: recargar la primera página con los filtros actuales
+        fetchExercises(1, false);
+      }
+    },
+    [favoritesOnly, fetchExercises]
+  );
 
   // Refetch al cambiar filtros
   useEffect(() => {
@@ -90,6 +119,22 @@ export default function ExercisesPage() {
 
       {/* Buscador */}
       <SearchBar value={search} onChange={setSearch} />
+
+      {/* Filtro de favoritos */}
+      <div className="mb-3">
+        <button
+          onClick={() => setFavoritesOnly((v) => !v)}
+          aria-pressed={favoritesOnly}
+          className={`inline-flex min-h-touch items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors duration-150 ease-out-quint ${
+            favoritesOnly
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border bg-card text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${favoritesOnly ? 'fill-primary-foreground' : ''}`} />
+          Favoritos
+        </button>
+      </div>
 
       {/* Filtros por parte del cuerpo */}
       <div className="mb-3">
@@ -141,17 +186,33 @@ export default function ExercisesPage() {
         </div>
       ) : exercises.length === 0 ? (
         <div className="text-center py-16">
-          <Search className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
-          <p className="text-lg text-muted-foreground">No se encontraron ejercicios</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">
-            Probá con otros filtros o términos de búsqueda
-          </p>
+          {favoritesOnly ? (
+            <>
+              <Heart className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+              <p className="text-lg text-muted-foreground">Todavía no tenés favoritos</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Tocá el corazón de un ejercicio para marcarlo como favorito
+              </p>
+            </>
+          ) : (
+            <>
+              <Search className="mx-auto mb-4 h-10 w-10 text-muted-foreground" />
+              <p className="text-lg text-muted-foreground">No se encontraron ejercicios</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
+                Probá con otros filtros o términos de búsqueda
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {exercises.map((exercise) => (
-              <ExerciseGridCard key={exercise.id} exercise={exercise} />
+              <ExerciseGridCard
+                key={exercise.id}
+                exercise={exercise}
+                onToggleFavorite={toggleFavorite}
+              />
             ))}
           </div>
 

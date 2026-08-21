@@ -42,6 +42,7 @@ export function createPrismaMock() {
     },
     workoutSet: { upsert: vi.fn(), findMany: vi.fn() },
     exercise: { findMany: vi.fn(), findUnique: vi.fn(), count: vi.fn() },
+    favoriteExercise: { findMany: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
   };
 

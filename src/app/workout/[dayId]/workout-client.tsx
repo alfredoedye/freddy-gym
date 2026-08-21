@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWorkout, type PlanExerciseData, type WorkoutSetData } from '@/hooks/useWorkout';
 import { isBodyweightExercise } from '@/lib/exercise-utils';
@@ -8,8 +8,6 @@ import { WorkoutHeader } from '@/components/workout/workout-header';
 import { ExerciseProgress } from '@/components/workout/exercise-progress';
 import { ExerciseCard } from '@/components/workout/exercise-card';
 import { SetRow } from '@/components/workout/set-row';
-import { RestTimer, readStoredRestTimer } from '@/components/workout/rest-timer';
-import { ChevronRight } from 'lucide-react';
 
 interface WorkoutClientProps {
   planDay: {
@@ -35,15 +33,6 @@ export function WorkoutClient({
   previousSets,
 }: WorkoutClientProps) {
   const router = useRouter();
-  const [timerActive, setTimerActive] = useState(false);
-
-  // Retomar un descanso que estaba corriendo antes de un refresh — el deadline
-  // persiste en sessionStorage (ver RestTimer).
-  useEffect(() => {
-    if (readStoredRestTimer(session.id)) {
-      setTimerActive(true);
-    }
-  }, [session.id]);
 
   const {
     currentExerciseIndex,
@@ -73,21 +62,6 @@ export function WorkoutClient({
     previousSets,
   });
 
-  // Manejar completar serie
-  const handleCompleteSet = useCallback(
-    (exerciseId: string, setNumber: number, reps: number, weight: number | null) => {
-      completeSet(exerciseId, setNumber, reps, weight);
-      // Activar timer de descanso
-      setTimerActive(true);
-    },
-    [completeSet]
-  );
-
-  // Manejar timer completado o skip
-  const handleTimerDone = useCallback(() => {
-    setTimerActive(false);
-  }, []);
-
   // Al cambiar de ejercicio (siguiente o salto directo desde el progreso/preview),
   // volver arriba del todo. Sin esto la página queda donde estaba el usuario
   // dentro de la ficha anterior — normalmente scrolleada hasta las series — y
@@ -96,6 +70,34 @@ export function WorkoutClient({
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentExerciseIndex]);
 
+  // Navegación por swipe horizontal entre ejercicios. Solo dispara cuando el
+  // gesto es claramente horizontal (umbral de distancia + dominancia sobre el
+  // eje vertical) para no interferir con el scroll normal de la página.
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = touchStart.current;
+      touchStart.current = null;
+      if (!start) return;
+
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+      if (dx < 0) {
+        nextExercise();
+      } else {
+        prevExercise();
+      }
+    },
+    [nextExercise, prevExercise]
+  );
+
   // Manejar botón principal (CTA)
   const handleMainAction = useCallback(() => {
     if (isWorkoutComplete) {
@@ -103,7 +105,6 @@ export function WorkoutClient({
       router.push(`/workout/${planDay.id}/complete?sessionId=${session.id}`);
     } else if (isCurrentExerciseComplete) {
       // Siguiente ejercicio
-      setTimerActive(false);
       nextExercise();
     }
   }, [isWorkoutComplete, isCurrentExerciseComplete, nextExercise, router, planDay.id, session.id]);
@@ -128,7 +129,11 @@ export function WorkoutClient({
   const ctaText = getCtaText();
 
   return (
-    <div className="flex flex-col min-h-screen bg-background pb-20">
+    <div
+      className="flex flex-col min-h-screen bg-background pb-20"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <WorkoutHeader
         dayName={planDay.name}
@@ -149,24 +154,11 @@ export function WorkoutClient({
         onJumpTo={goToExercise}
       />
 
-      {/* Timer de descanso — se renderiza antes que la ficha del ejercicio para que,
-          cuando está activo, sus controles (saltar, ±15s) queden arriba del fold en
-          vez de debajo de la ficha completa (GIF + info + notas). Cuando no está
-          activo, RestTimer no renderiza nada, así que esto no afecta el layout normal. */}
-      <RestTimer
-        duration={currentExercise.restSeconds}
-        isActive={timerActive}
-        sessionId={session.id}
-        onComplete={handleTimerDone}
-        onSkip={handleTimerDone}
-      />
-
       {/* Ejercicio actual */}
       <ExerciseCard
         exercise={currentExercise.exercise}
         phase={currentExercise.phase}
         setsInfo={`${currentExercise.sets} × ${currentExercise.repsMin}-${currentExercise.repsMax}`}
-        restSeconds={currentExercise.restSeconds}
         notes={currentExercise.notes}
       />
 
@@ -201,7 +193,7 @@ export function WorkoutClient({
                 isBodyweight={isBodyweightExercise(currentExercise.exercise.equipment)}
                 isFailed={isSetFailed(currentExercise.exerciseId, set.setNumber)}
                 onComplete={(reps, weight) =>
-                  handleCompleteSet(currentExercise.exerciseId, set.setNumber, reps, weight)
+                  completeSet(currentExercise.exerciseId, set.setNumber, reps, weight)
                 }
                 onUndo={() => undoSet(currentExercise.exerciseId, set.setNumber)}
                 onRetry={() => retrySet(currentExercise.exerciseId, set.setNumber)}
@@ -211,30 +203,6 @@ export function WorkoutClient({
           })}
         </div>
       </div>
-
-      {/* Próximos ejercicios (preview) — clickeables, saltan directo a ese ejercicio */}
-      {currentExerciseIndex < exercises.length - 1 && (
-        <div className="px-4 py-3 border-t border-border space-y-1">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
-            Siguiente
-          </p>
-          {exercises.slice(currentExerciseIndex + 1, currentExerciseIndex + 3).map((pe, i) => (
-            <button
-              key={pe.exerciseId}
-              onClick={() => goToExercise(currentExerciseIndex + 1 + i)}
-              className="flex w-full min-h-touch items-center justify-between gap-2 rounded-md px-2 -mx-2 py-2 text-left transition-colors duration-150 ease-out-quint hover:bg-secondary active:bg-secondary"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <ChevronRight className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-                <span className="text-sm text-foreground/80 truncate">{pe.exercise.name}</span>
-              </div>
-              <span className="text-xs text-muted-foreground font-mono flex-shrink-0">
-                {pe.sets} × {pe.repsMin}-{pe.repsMax}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* CTA fijo inferior — siempre Volt, incluso al finalizar (momento de logro) */}
       {ctaText && (

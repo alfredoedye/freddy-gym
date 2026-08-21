@@ -24,7 +24,9 @@ export async function GET() {
     }
 
     const plans = await prisma.plan.findMany({
-      where: { userId: session.user.id },
+      // Los archivados no se listan — se archivan justamente para sacarlos
+      // de la vista sin perder su historial.
+      where: { userId: session.user.id, archivedAt: null },
       orderBy: { createdAt: 'desc' },
     });
 

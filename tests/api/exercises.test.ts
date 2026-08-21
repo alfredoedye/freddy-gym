@@ -61,6 +61,28 @@ describe('GET /api/exercises', () => {
     );
   });
 
+  it('con sesión pasa el userId y los flags de favoritos', async () => {
+    getServerSessionMock.mockResolvedValue(authedSession() as never);
+
+    await searchRoute(
+      jsonRequest('/api/exercises?favorites=true&favoritesFirst=true', undefined, 'GET')
+    );
+
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'user-1', favoritesOnly: true, favoritesFirst: true })
+    );
+  });
+
+  it('sin sesión ignora los flags de favoritos', async () => {
+    getServerSessionMock.mockResolvedValue(null as never);
+
+    await searchRoute(jsonRequest('/api/exercises?favorites=true', undefined, 'GET'));
+
+    expect(searchMock).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: undefined, favoritesOnly: false, favoritesFirst: false })
+    );
+  });
+
   it('devuelve 500 controlado si la búsqueda falla', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     searchMock.mockRejectedValue(new Error('DB caída'));

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dumbbell, Loader2, Search } from 'lucide-react';
+import { Dumbbell, Heart, Loader2, Search } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ interface PickerExercise {
   target: string;
   imageUrl: string | null;
   gifUrl: string | null;
+  isFavorite?: boolean;
 }
 
 interface ExercisePickerDialogProps {
@@ -41,7 +42,9 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
 
     setLoading(true);
     const timeout = setTimeout(() => {
-      fetch(`/api/exercises?search=${encodeURIComponent(search)}&limit=20`)
+      // favoritesFirst: los favoritos del usuario encabezan la lista — son
+      // los candidatos más probables al armar o modificar un plan.
+      fetch(`/api/exercises?search=${encodeURIComponent(search)}&limit=20&favoritesFirst=true`)
         .then((res) => res.json())
         .then((data) => setExercises(data.exercises || []))
         .catch(() => setExercises([]))
@@ -104,12 +107,15 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
                     <Dumbbell className="h-5 w-5 text-muted-foreground" />
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{ex.name}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {getBodyPartLabel(ex.bodyPart)} · {getEquipmentLabel(ex.equipment)}
                   </p>
                 </div>
+                {ex.isFavorite && (
+                  <Heart className="h-4 w-4 flex-shrink-0 fill-primary text-primary" aria-label="Favorito" />
+                )}
               </button>
             ))}
         </div>

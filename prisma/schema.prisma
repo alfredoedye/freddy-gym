@@ -25,11 +25,12 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relaciones
-  accounts        Account[]
-  sessions        Session[]
-  profile         Profile?
-  plans           Plan[]
-  workoutSessions WorkoutSession[]
+  accounts          Account[]
+  sessions          Session[]
+  profile           Profile?
+  plans             Plan[]
+  workoutSessions   WorkoutSession[]
+  favoriteExercises FavoriteExercise[]
 }
 
 model Account {
@@ -111,11 +112,27 @@ model Exercise {
   // Relaciones
   planExercises PlanExercise[]
   workoutSets   WorkoutSet[]
+  favoritedBy   FavoriteExercise[]
 
   @@index([bodyPart])
   @@index([muscleGroup])
   @@index([equipment])
   @@index([category])
+}
+
+// Ejercicios favoritos del usuario — se listan primero al agregar/cambiar
+// ejercicios en un plan y permiten filtrar el catálogo por "favoritos".
+model FavoriteExercise {
+  id         String   @id @default(cuid())
+  userId     String
+  exerciseId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId])
 }
 
 // ============================================
@@ -133,6 +150,7 @@ model Plan {
   status        PlanStatus @default(ACTIVE)
   startDate     DateTime   @default(now())
   endDate       DateTime?
+  archivedAt    DateTime?  // Archivado: se oculta de "Mis Planes" sin borrar historial
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 

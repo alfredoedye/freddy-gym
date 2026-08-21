@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { Heart } from 'lucide-react';
 import { getBodyPartLabel, getEquipmentLabel } from '@/lib/exercise-utils';
 
 interface ExerciseGridCardProps {
@@ -12,10 +13,13 @@ interface ExerciseGridCardProps {
     equipment: string;
     target: string;
     imageUrl: string | null;
+    isFavorite?: boolean;
   };
+  /** Si viene, la card muestra el corazón para marcar/desmarcar favorito. */
+  onToggleFavorite?: (exerciseId: string, isFavorite: boolean) => void;
 }
 
-export function ExerciseGridCard({ exercise }: ExerciseGridCardProps) {
+export function ExerciseGridCard({ exercise, onToggleFavorite }: ExerciseGridCardProps) {
   return (
     <Link
       href={`/exercises/${exercise.id}`}
@@ -36,6 +40,25 @@ export function ExerciseGridCard({ exercise }: ExerciseGridCardProps) {
           <div className="flex h-full items-center justify-center">
             <span className="text-4xl">🏋️</span>
           </div>
+        )}
+
+        {/* Corazón de favorito — botón encima del Link: frena la navegación */}
+        {onToggleFavorite && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onToggleFavorite(exercise.id, !exercise.isFavorite);
+            }}
+            className="absolute right-1.5 top-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-background/70 backdrop-blur-sm transition-colors duration-150 active:bg-background"
+            aria-label={exercise.isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+          >
+            <Heart
+              className={`h-5 w-5 ${
+                exercise.isFavorite ? 'fill-primary text-primary' : 'text-muted-foreground'
+              }`}
+            />
+          </button>
         )}
       </div>
 
