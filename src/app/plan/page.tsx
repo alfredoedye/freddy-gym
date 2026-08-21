@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, Dumbbell, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Archive, ArrowLeft, Calendar, Dumbbell, Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { goalLabels, splitLabels, statusLabels } from '@/lib/plan-labels';
@@ -35,7 +35,7 @@ const statusBadgeClass: Record<string, string> = {
 export default function PlanListPage() {
   const router = useRouter();
   const [plans, setPlans] = useState<PlanSummaryView[] | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [archivingId, setArchivingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPlans();
@@ -53,37 +53,28 @@ export default function PlanListPage() {
     }
   };
 
-  const handleDelete = async (plan: PlanSummaryView) => {
-    if (!window.confirm(`¿Eliminar "${plan.name}"? Si ya tiene entrenamientos registrados, se cancelará en vez de borrarse.`)) {
+  const handleArchive = async (plan: PlanSummaryView) => {
+    if (!window.confirm(`¿Archivar "${plan.name}"? Va a desaparecer de esta lista, pero se conserva su historial de entrenamientos.`)) {
       return;
     }
 
-    setDeletingId(plan.id);
+    setArchivingId(plan.id);
     try {
-      const res = await fetch(`/api/plans/${plan.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/plans/${plan.id}/archive`, { method: 'POST' });
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'No se pudo eliminar el plan');
+        toast.error(data.error || 'No se pudo archivar el plan');
         return;
       }
 
-      if (data.action === 'deleted') {
-        toast.success('Plan eliminado');
-        setPlans((prev) => (prev ? prev.filter((p) => p.id !== plan.id) : prev));
-      } else {
-        toast.info('El plan tenía entrenamientos registrados, se canceló en su lugar');
-        setPlans((prev) =>
-          prev
-            ? prev.map((p) => (p.id === plan.id ? { ...p, status: 'CANCELLED' } : p))
-            : prev
-        );
-      }
+      toast.success('Plan archivado');
+      setPlans((prev) => (prev ? prev.filter((p) => p.id !== plan.id) : prev));
     } catch (err) {
-      console.error('Error al eliminar plan:', err);
+      console.error('Error al archivar plan:', err);
       toast.error('Error de conexión');
     } finally {
-      setDeletingId(null);
+      setArchivingId(null);
     }
   };
 
@@ -135,8 +126,8 @@ export default function PlanListPage() {
             <h2 className="font-display text-lg font-bold mb-3">Plan activo</h2>
             <PlanCard
               plan={activePlan}
-              onDelete={handleDelete}
-              deleting={deletingId === activePlan.id}
+              onArchive={handleArchive}
+              archiving={archivingId === activePlan.id}
             />
           </section>
         )}
@@ -149,8 +140,8 @@ export default function PlanListPage() {
                 <PlanCard
                   key={plan.id}
                   plan={plan}
-                  onDelete={handleDelete}
-                  deleting={deletingId === plan.id}
+                  onArchive={handleArchive}
+                  archiving={archivingId === plan.id}
                 />
               ))}
             </div>
@@ -163,12 +154,12 @@ export default function PlanListPage() {
 
 function PlanCard({
   plan,
-  onDelete,
-  deleting,
+  onArchive,
+  archiving,
 }: {
   plan: PlanSummaryView;
-  onDelete: (plan: PlanSummaryView) => void;
-  deleting: boolean;
+  onArchive: (plan: PlanSummaryView) => void;
+  archiving: boolean;
 }) {
   return (
     <div className="rounded-lg border border-border bg-card p-4">
@@ -205,12 +196,12 @@ function PlanCard({
 
       <div className="mt-3 flex justify-end">
         <button
-          onClick={() => onDelete(plan)}
-          disabled={deleting}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-destructive transition-colors duration-150 disabled:opacity-50"
+          onClick={() => onArchive(plan)}
+          disabled={archiving}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 disabled:opacity-50"
         >
-          {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-          Eliminar
+          {archiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
+          Archivar
         </button>
       </div>
     </div>

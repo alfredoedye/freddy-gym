@@ -2,14 +2,16 @@
 
 /**
  * Página de vista del plan generado.
- * Muestra todos los días con sus ejercicios, permite activar el plan,
- * editar la prescripción (series/reps/descanso) o reemplazar un
- * ejercicio, y eliminar/cancelar el plan.
+ * Muestra todos los días con sus ejercicios y permite activar el plan,
+ * archivarlo, y en modo edición: reordenar, reemplazar, agregar o quitar
+ * ejercicios (la prescripción de series/reps/descanso no se edita acá —
+ * el modo edición trabaja solo sobre QUÉ ejercicios componen cada día).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
+  Archive,
   ArrowLeft,
   Calendar,
   Dumbbell,
@@ -20,15 +22,12 @@ import {
   ChevronUp,
   Loader2,
   Pencil,
-  Check,
-  X,
   Trash2,
   Repeat,
   Plus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ExercisePickerDialog } from '@/components/plan/exercise-picker-dialog';
 import { goalLabels, splitLabels } from '@/lib/plan-labels';
 
@@ -83,8 +82,7 @@ interface PlanView {
 const dayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 // Botón circular de acción compartido por mover/cambiar/quitar en
-// EditableExerciseRow — mismo tamaño y estilo para las cuatro acciones sobre
-// el ejercicio en sí, todas separadas de los campos numéricos de abajo.
+// EditableExerciseRow — mismo tamaño y estilo para las cuatro acciones.
 const ACTION_BUTTON =
   'flex-shrink-0 flex items-center justify-center min-h-touch min-w-touch rounded-full border border-border bg-secondary text-foreground transition-colors duration-150 active:bg-muted disabled:opacity-40 disabled:pointer-events-none';
 
@@ -98,10 +96,7 @@ export default function PlanViewPage() {
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
   const [activating, setActivating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  // Ejercicios con cambios sin guardar (por id de PlanExercise), para poder
-  // avisar antes de perderlos al salir del modo edición.
-  const [dirtyExerciseIds, setDirtyExerciseIds] = useState<Set<string>>(new Set());
+  const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
     fetchPlan();
@@ -145,25 +140,6 @@ export default function PlanViewPage() {
     } finally {
       setActivating(false);
     }
-  };
-
-  const handleDirtyChange = useCallback((exerciseId: string, isDirty: boolean) => {
-    setDirtyExerciseIds((prev) => {
-      if (isDirty === prev.has(exerciseId)) return prev;
-      const next = new Set(prev);
-      if (isDirty) next.add(exerciseId);
-      else next.delete(exerciseId);
-      return next;
-    });
-  }, []);
-
-  const handleToggleEditing = () => {
-    if (isEditing && dirtyExerciseIds.size > 0) {
-      if (!window.confirm('Tenés cambios sin guardar en algunos ejercicios. ¿Salir sin guardarlos?')) {
-        return;
-      }
-    }
-    setIsEditing((v) => !v);
   };
 
   const handleExerciseSaved = (planDayId: string, updated: PlanExerciseView) => {
@@ -250,38 +226,33 @@ export default function PlanViewPage() {
     }
   };
 
-  const handleDeletePlan = async () => {
+  const handleArchivePlan = async () => {
     if (!plan) return;
     if (
       !window.confirm(
-        `¿Eliminar "${plan.name}"? Si ya tiene entrenamientos registrados, se cancelará en vez de borrarse.`
+        `¿Archivar "${plan.name}"? Va a desaparecer de "Mis Planes", pero se conserva su historial de entrenamientos.`
       )
     ) {
       return;
     }
 
-    setDeleting(true);
+    setArchiving(true);
     try {
-      const res = await fetch(`/api/plans/${planId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/plans/${planId}/archive`, { method: 'POST' });
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'No se pudo eliminar el plan');
+        toast.error(data.error || 'No se pudo archivar el plan');
         return;
       }
 
-      if (data.action === 'deleted') {
-        toast.success('Plan eliminado');
-        router.push('/plan');
-      } else {
-        toast.info('El plan tenía entrenamientos registrados, se canceló en su lugar');
-        setPlan((prev) => (prev ? { ...prev, status: 'CANCELLED' } : prev));
-      }
+      toast.success('Plan archivado');
+      router.push('/plan');
     } catch (err) {
-      console.error('Error al eliminar plan:', err);
+      console.error('Error al archivar plan:', err);
       toast.error('Error de conexión');
     } finally {
-      setDeleting(false);
+      setArchiving(false);
     }
   };
 
@@ -319,22 +290,22 @@ export default function PlanViewPage() {
           </button>
           <h1 className="font-display text-xl font-bold truncate flex-1">{plan.name}</h1>
           <button
-            onClick={handleToggleEditing}
+            onClick={() => setIsEditing((v) => !v)}
             className={`p-2 rounded-md transition-colors duration-150 ${isEditing ? 'bg-accent text-accent-text' : 'hover:bg-secondary'}`}
             aria-label="Editar plan"
           >
             <Pencil className="w-5 h-5" />
           </button>
           <button
-            onClick={handleDeletePlan}
-            disabled={deleting}
+            onClick={handleArchivePlan}
+            disabled={archiving}
             className="p-2 -mr-2 rounded-md hover:bg-secondary transition-colors duration-150 disabled:opacity-50"
-            aria-label="Eliminar plan"
+            aria-label="Archivar plan"
           >
-            {deleting ? (
+            {archiving ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
-              <Trash2 className="w-5 h-5 text-destructive" />
+              <Archive className="w-5 h-5" />
             )}
           </button>
         </div>
@@ -382,7 +353,6 @@ export default function PlanViewPage() {
                 onExerciseDeleted={(exerciseId) => handleExerciseDeleted(day.id, exerciseId)}
                 onExerciseAdded={(created) => handleExerciseAdded(day.id, created)}
                 onMove={(exerciseId, direction) => handleReorder(day.id, exerciseId, direction)}
-                onDirtyChange={handleDirtyChange}
               />
             ))}
           </div>
@@ -443,7 +413,6 @@ function DayCard({
   onExerciseDeleted,
   onExerciseAdded,
   onMove,
-  onDirtyChange,
 }: {
   day: PlanDayView;
   dayLabel: string;
@@ -455,7 +424,6 @@ function DayCard({
   onExerciseDeleted: (exerciseId: string) => void;
   onExerciseAdded: (created: PlanExerciseView) => void;
   onMove: (exerciseId: string, direction: 'up' | 'down') => void;
-  onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
   const [addingPhase, setAddingPhase] = useState<ExercisePhase | null>(null);
   const [adding, setAdding] = useState(false);
@@ -542,14 +510,12 @@ function DayCard({
                         key={ex.id}
                         exercise={ex}
                         dayExercises={day.exercises}
-                        phase={phase}
                         planId={planId}
                         isFirst={index === 0}
                         isLast={index === exercisesInPhase.length - 1}
                         onSaved={onExerciseSaved}
                         onDeleted={onExerciseDeleted}
                         onMove={onMove}
-                        onDirtyChange={onDirtyChange}
                       />
                     ) : (
                       <ExerciseRow key={ex.id} exercise={ex} phase={phase} />
@@ -601,8 +567,6 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
         <p className="text-sm text-muted-foreground font-mono">
           {ex.sets} × {ex.repsMin === ex.repsMax ? ex.repsMin : `${ex.repsMin}-${ex.repsMax}`}
           {phase === 'COOLDOWN' ? '' : ' reps'}
-          {' · '}
-          {ex.restSeconds}s descanso
         </p>
         {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
       </div>
@@ -610,52 +574,31 @@ function ExerciseRow({ exercise: ex, phase }: { exercise: PlanExerciseView; phas
   );
 }
 
+// Fila del modo edición: solo el ejercicio y sus acciones (mover, cambiar,
+// quitar) — la prescripción de series/reps/descanso no se muestra ni se
+// edita acá, a propósito. Cambiar el ejercicio guarda al instante.
 function EditableExerciseRow({
   exercise: ex,
   dayExercises,
-  phase,
   planId,
   isFirst,
   isLast,
   onSaved,
   onDeleted,
   onMove,
-  onDirtyChange,
 }: {
   exercise: PlanExerciseView;
   dayExercises: PlanExerciseView[];
-  phase: ExercisePhase;
   planId: string;
   isFirst: boolean;
   isLast: boolean;
   onSaved: (updated: PlanExerciseView) => void;
   onDeleted: (exerciseId: string) => void;
   onMove: (exerciseId: string, direction: 'up' | 'down') => void;
-  onDirtyChange: (exerciseId: string, isDirty: boolean) => void;
 }) {
-  const [sets, setSets] = useState(ex.sets);
-  const [repsMin, setRepsMin] = useState(ex.repsMin);
-  const [repsMax, setRepsMax] = useState(ex.repsMax);
-  const [restSeconds, setRestSeconds] = useState(ex.restSeconds);
-  const [pendingExercise, setPendingExercise] = useState(ex.exercise);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [swapping, setSwapping] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const dirty =
-    sets !== ex.sets ||
-    repsMin !== ex.repsMin ||
-    repsMax !== ex.repsMax ||
-    restSeconds !== ex.restSeconds ||
-    pendingExercise.id !== ex.exercise.id;
-
-  // Avisar al padre para que pueda confirmar antes de descartar cambios al
-  // salir del modo edición (ver handleToggleEditing en PlanViewPage).
-  useEffect(() => {
-    onDirtyChange(ex.id, dirty);
-    return () => onDirtyChange(ex.id, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dirty, ex.id]);
 
   // Otros ejercicios del mismo día — para no dejar elegir uno que ya está
   // usado (creaba duplicados silenciosos sin ningún aviso).
@@ -663,52 +606,34 @@ function EditableExerciseRow({
     .filter((other) => other.id !== ex.id)
     .map((other) => other.exercise.id);
 
-  const resetToSaved = () => {
-    setSets(ex.sets);
-    setRepsMin(ex.repsMin);
-    setRepsMax(ex.repsMax);
-    setRestSeconds(ex.restSeconds);
-    setPendingExercise(ex.exercise);
-  };
-
-  const handleSave = async () => {
-    if (repsMin > repsMax) {
-      toast.error('El mínimo de reps no puede ser mayor al máximo');
-      return;
-    }
-
-    setSaving(true);
+  const handleSwap = async (selected: { id: string }) => {
+    setPickerOpen(false);
+    setSwapping(true);
     try {
       const res = await fetch(`/api/plans/${planId}/exercises/${ex.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sets,
-          repsMin,
-          repsMax,
-          restSeconds,
-          ...(pendingExercise.id !== ex.exercise.id ? { exerciseId: pendingExercise.id } : {}),
-        }),
+        body: JSON.stringify({ exerciseId: selected.id }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        toast.error(data.error || 'No se pudo guardar el cambio');
+        toast.error(data.error || 'No se pudo cambiar el ejercicio');
         return;
       }
 
       onSaved(data.exercise);
-      toast.success('Ejercicio actualizado');
+      toast.success('Ejercicio cambiado');
     } catch (err) {
-      console.error('Error al guardar ejercicio:', err);
+      console.error('Error al cambiar ejercicio:', err);
       toast.error('Error de conexión');
     } finally {
-      setSaving(false);
+      setSwapping(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm(`¿Quitar "${pendingExercise.name}" de este día?`)) return;
+    if (!window.confirm(`¿Quitar "${ex.exercise.name}" de este día?`)) return;
 
     setDeleting(true);
     try {
@@ -731,10 +656,10 @@ function EditableExerciseRow({
   return (
     <div className="rounded-md border border-border p-3 space-y-3">
       <div className="flex items-center gap-3">
-        {pendingExercise.imageUrl ? (
+        {ex.exercise.imageUrl ? (
           <img
-            src={pendingExercise.imageUrl}
-            alt={pendingExercise.name}
+            src={ex.exercise.imageUrl}
+            alt={ex.exercise.name}
             className="w-12 h-12 rounded-md object-cover bg-secondary flex-shrink-0"
           />
         ) : (
@@ -743,14 +668,10 @@ function EditableExerciseRow({
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-base leading-tight line-clamp-2">{pendingExercise.name}</p>
-          {ex.notes && <p className="text-xs text-foreground/80 mt-0.5">💡 {ex.notes}</p>}
+          <p className="font-medium text-base leading-tight line-clamp-2">{ex.exercise.name}</p>
         </div>
       </div>
 
-      {/* Acciones sobre el ejercicio en sí — deliberadamente en su propia fila,
-          separada de los campos de series/reps/descanso de abajo. Mover, cambiar
-          y quitar operan sobre QUÉ ejercicio es, no sobre la prescripción actual. */}
       <div className="flex items-center gap-2">
         <button
           onClick={() => onMove(ex.id, 'up')}
@@ -770,10 +691,11 @@ function EditableExerciseRow({
         </button>
         <button
           onClick={() => setPickerOpen(true)}
+          disabled={swapping}
           className={ACTION_BUTTON}
           aria-label="Cambiar ejercicio"
         >
-          <Repeat className="w-4 h-4" />
+          {swapping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Repeat className="w-4 h-4" />}
         </button>
         <button
           onClick={handleDelete}
@@ -789,90 +711,11 @@ function EditableExerciseRow({
         </button>
       </div>
 
-      {/* Dos filas de 2 columnas en vez de 4 columnas iguales: con la escala
-          de fuente grande (Perfil > Accesibilidad), "Reps min"/"Reps max" no
-          entraban en una columna de 4 y envolvían a dos líneas mientras
-          "Series"/"Descanso" quedaban en una — los inputs de abajo terminaban
-          a distinta altura entre sí. Con solo 2 columnas cada label tiene el
-          doble de ancho y no rompe línea incluso en el escalón más grande. */}
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField label="Series" value={sets} onChange={setSets} min={1} max={10} />
-        <NumberField label="Descanso" value={restSeconds} onChange={setRestSeconds} min={0} max={600} />
-      </div>
-      <div className="grid grid-cols-2 gap-2">
-        <NumberField label="Reps min" value={repsMin} onChange={setRepsMin} min={1} max={50} />
-        <NumberField label="Reps max" value={repsMax} onChange={setRepsMax} min={1} max={50} />
-      </div>
-
-      {dirty && (
-        <div className="flex items-center gap-2 justify-end">
-          <Button variant="ghost" size="sm" onClick={resetToSaved} disabled={saving}>
-            <X className="w-4 h-4" />
-            Cancelar
-          </Button>
-          <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-            Guardar
-          </Button>
-        </div>
-      )}
-
       <ExercisePickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         excludeIds={otherExerciseIds}
-        onSelect={(selected) => {
-          setPendingExercise(selected);
-          setPickerOpen(false);
-        }}
-      />
-    </div>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min: number;
-  max: number;
-}) {
-  // Borrador en texto, independiente del número committeado: si el onChange
-  // clampeaba/ignoraba en cada tecla, borrar el campo (o pasarse del rango a
-  // mitad de tipeo) nunca disparaba un nuevo render y el input quedaba
-  // mostrando lo que el usuario tipeó (vacío) mientras React seguía pensando
-  // que el valor era el de antes — desincronizado, sin forma de arreglarlo
-  // salvo recargando. Clampeamos recién al perder el foco.
-  const [draft, setDraft] = useState(String(value));
-
-  useEffect(() => {
-    setDraft(String(value));
-  }, [value]);
-
-  const commit = () => {
-    const parsed = parseInt(draft, 10);
-    const clamped = Number.isNaN(parsed) ? value : Math.min(max, Math.max(min, parsed));
-    setDraft(String(clamped));
-    if (clamped !== value) onChange(clamped);
-  };
-
-  return (
-    <div>
-      <label className="text-xs text-muted-foreground mb-1 block">{label}</label>
-      <Input
-        type="number"
-        value={draft}
-        min={min}
-        max={max}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        className="h-9 text-sm"
+        onSelect={handleSwap}
       />
     </div>
   );

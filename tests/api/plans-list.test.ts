@@ -96,13 +96,13 @@ describe('GET /api/plans', () => {
     expect(byId).toEqual({ p1: 100, p2: 100, p3: 0 });
   });
 
-  it('solo lista planes del usuario de la sesión', async () => {
+  it('solo lista planes del usuario de la sesión, excluyendo archivados', async () => {
     prismaMock.plan.findMany.mockResolvedValue([]);
 
     await GET();
 
     expect(prismaMock.plan.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: 'user-1' } })
+      expect.objectContaining({ where: { userId: 'user-1', archivedAt: null } })
     );
   });
 
