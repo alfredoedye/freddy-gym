@@ -85,8 +85,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { goal, durationWeeks, daysPerWeek, split, timePerSession, previousPlanId } =
-      validation.data;
+    const {
+      goal,
+      durationWeeks,
+      daysPerWeek,
+      split,
+      timePerSession,
+      previousPlanId,
+      prioritizeFavorites,
+    } = validation.data;
 
     // 2b. Si se indicó un plan anterior, verificar que pertenece al usuario
     // (previousPlanId viene del cliente — sin esto, cualquier usuario podría leer
@@ -111,6 +118,7 @@ export async function POST(request: NextRequest) {
       split,
       timePerSession,
       previousPlanId,
+      prioritizeFavorites,
     });
 
     if (!result.success) {

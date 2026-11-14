@@ -153,7 +153,7 @@ export function SetRow({
               ref={repsRef}
               type="number"
               inputMode="numeric"
-              placeholder={`${repsMin}-${repsMax}`}
+              placeholder={repsMin === repsMax ? `${repsMin}` : `${repsMin}-${repsMax}`}
               value={completed ? (currentReps?.toString() || reps) : reps}
               onChange={(e) => setReps(e.target.value)}
               onKeyDown={handleRepsKeyDown}

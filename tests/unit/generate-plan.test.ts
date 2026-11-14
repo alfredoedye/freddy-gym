@@ -65,6 +65,27 @@ describe('generateTrainingPlan', () => {
     expect(callLLMMock).toHaveBeenCalledTimes(1);
   });
 
+  it('incluye los favoritos del usuario en el prompt solo si se pide priorizarlos', async () => {
+    callLLMMock.mockResolvedValue(llmResponse(buildGeneratedPlan({ trainingDays: 3 })));
+    // 'fuera-del-pool' no está en el pool: no debe llegar al prompt como favorito
+    prismaMock.favoriteExercise.findMany.mockResolvedValue([
+      { exerciseId: 'ex-1' },
+      { exerciseId: 'fuera-del-pool' },
+    ]);
+
+    await generateTrainingPlan(baseInput);
+    expect(callLLMMock.mock.calls[0][1]).not.toContain('EJERCICIOS FAVORITOS');
+    expect(prismaMock.favoriteExercise.findMany).not.toHaveBeenCalled();
+
+    await generateTrainingPlan({ ...baseInput, prioritizeFavorites: true });
+    const prompt = callLLMMock.mock.calls[1][1];
+    expect(prompt).toContain('EJERCICIOS FAVORITOS DEL USUARIO');
+    expect(prompt).not.toContain('fuera-del-pool');
+    expect(prismaMock.favoriteExercise.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'user-1' } })
+    );
+  });
+
   it('falla sin llamar al LLM si el usuario no tiene perfil', async () => {
     prismaMock.user.findUnique.mockResolvedValue({ id: 'user-1', profile: null });
 

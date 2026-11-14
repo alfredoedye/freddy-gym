@@ -180,6 +180,26 @@ ${records
   .join('\n')}`;
 }
 
+// === EJERCICIOS FAVORITOS ===
+
+/**
+ * Lista los ejercicios que el usuario marcó como favoritos para que el plan
+ * se arme alrededor de ellos. Devuelve '' si no hay ninguno.
+ */
+export function buildFavoritesContext(
+  favorites: { id: string; name: string; target: string }[]
+): string {
+  if (favorites.length === 0) return '';
+
+  return `EJERCICIOS FAVORITOS DEL USUARIO (son los que ya hace y prefiere):
+${favorites.map((f) => `- ID: "${f.id}" | ${f.name} | Target: ${f.target}`).join('\n')}
+
+REGLAS SOBRE FAVORITOS:
+- Armar el plan alrededor de estos ejercicios: usar la mayor cantidad posible, en la fase y el día donde tengan sentido según el split.
+- Completar con otros ejercicios del pool solo para cubrir grupos musculares que los favoritos no cubren.
+- No forzar un favorito en un día donde no corresponde, ni repetirlo en días consecutivos.`;
+}
+
 // === POOL DE EJERCICIOS ===
 
 interface ExerciseForPool {

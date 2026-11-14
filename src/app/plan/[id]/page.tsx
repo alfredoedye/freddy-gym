@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Archive,
   ArrowLeft,
@@ -95,7 +95,10 @@ export default function PlanViewPage() {
   const [loading, setLoading] = useState(true);
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]));
   const [activating, setActivating] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  // ?edit=1: llega así un plan recién armado a mano — abrir directo en modo
+  // edición con todos los días desplegados para empezar a agregar ejercicios.
+  const startInEdit = useSearchParams().get('edit') === '1';
+  const [isEditing, setIsEditing] = useState(startInEdit);
   const [archiving, setArchiving] = useState(false);
 
   useEffect(() => {
@@ -108,6 +111,13 @@ export default function PlanViewPage() {
       if (res.ok) {
         const data = await res.json();
         setPlan(data.plan);
+        if (startInEdit) {
+          setExpandedDays(
+            new Set(
+              (data.plan.planDays as PlanDayView[]).filter((d) => !d.isRest).map((d) => d.dayNumber)
+            )
+          );
+        }
       }
     } catch (err) {
       console.error('Error al cargar plan:', err);

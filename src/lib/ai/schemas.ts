@@ -87,4 +87,20 @@ export const GeneratePlanRequestSchema = z.object({
   split: z.string().min(1),
   timePerSession: z.number().int().min(30).max(120).optional(),
   previousPlanId: z.string().optional(),
+  // Pedirle a la IA que arme el plan alrededor de los ejercicios favoritos del usuario
+  prioritizeFavorites: z.boolean().optional(),
+});
+
+// Schema para crear un plan a mano (sin IA): el usuario elige qué días de la
+// semana entrena y después agrega los ejercicios desde el modo edición.
+export const ManualPlanRequestSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es requerido').max(60),
+  goal: z.enum(['HYPERTROPHY', 'STRENGTH', 'ENDURANCE', 'FAT_LOSS', 'RECOMPOSITION']),
+  durationWeeks: z.number().int().min(4).max(16),
+  // 1 = lunes … 7 = domingo
+  trainingDays: z
+    .array(z.number().int().min(1).max(7))
+    .min(1, 'Elegí al menos un día de entrenamiento')
+    .max(7)
+    .refine((days) => new Set(days).size === days.length, 'Días repetidos'),
 });

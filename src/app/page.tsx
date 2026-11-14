@@ -86,7 +86,12 @@ export default async function Dashboard() {
   let currentWeek = 1;
   if (activePlan?.startDate) {
     const diffMs = Date.now() - activePlan.startDate.getTime();
-    currentWeek = Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)));
+    // Tope en durationWeeks: un plan que se sigue usando pasada su duración
+    // mostraba "Semana 13/4".
+    currentWeek = Math.min(
+      activePlan.durationWeeks,
+      Math.max(1, Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000)))
+    );
   }
 
   return (

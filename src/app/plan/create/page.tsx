@@ -1,8 +1,11 @@
 'use client';
 
 /**
- * Página de creación de plan de entrenamiento.
- * El usuario configura parámetros y la IA genera el plan.
+ * Página de creación de plan de entrenamiento. Dos modos:
+ * - "Con IA": el usuario configura parámetros y la IA genera el plan
+ *   (opcionalmente armado alrededor de sus ejercicios favoritos).
+ * - "A mano": el usuario elige qué días entrena y después agrega los
+ *   ejercicios él mismo desde el modo edición del plan.
  * Con ?previousPlanId=<id> (viniendo del flujo de feedback), prefill de los
  * parámetros del plan anterior y la generación usa su progresión + feedback.
  */
@@ -18,8 +21,11 @@ import {
   Loader2,
   ArrowLeft,
   Sparkles,
+  Heart,
+  PencilLine,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const OPTION_BASE =
   'rounded-md border text-center font-medium transition-colors duration-150 ease-out-quint disabled:pointer-events-none disabled:opacity-50';
@@ -28,11 +34,27 @@ const OPTION_UNSELECTED = 'border-border bg-card text-foreground hover:border-mu
 
 // Opciones de configuración
 const GOALS = [
-  { value: 'HYPERTROPHY', label: 'Hipertrofia', description: 'Ganar masa muscular' },
+  {
+    value: 'HYPERTROPHY',
+    label: 'Hipertrofia',
+    description: 'Ganar masa muscular',
+  },
   { value: 'STRENGTH', label: 'Fuerza', description: 'Levantar más peso' },
-  { value: 'ENDURANCE', label: 'Resistencia', description: 'Más repeticiones, menos descanso' },
-  { value: 'FAT_LOSS', label: 'Pérdida de grasa', description: 'Quemar grasa, mantener músculo' },
-  { value: 'RECOMPOSITION', label: 'Recomposición', description: 'Ganar músculo y perder grasa' },
+  {
+    value: 'ENDURANCE',
+    label: 'Resistencia',
+    description: 'Más repeticiones, menos descanso',
+  },
+  {
+    value: 'FAT_LOSS',
+    label: 'Pérdida de grasa',
+    description: 'Quemar grasa, mantener músculo',
+  },
+  {
+    value: 'RECOMPOSITION',
+    label: 'Recomposición',
+    description: 'Ganar músculo y perder grasa',
+  },
 ];
 
 const DURATIONS = [
@@ -76,6 +98,16 @@ const TIME_OPTIONS = [
   { value: 90, label: '90 min' },
 ];
 
+const WEEKDAYS = [
+  { value: 1, label: 'Lun' },
+  { value: 2, label: 'Mar' },
+  { value: 3, label: 'Mié' },
+  { value: 4, label: 'Jue' },
+  { value: 5, label: 'Vie' },
+  { value: 6, label: 'Sáb' },
+  { value: 7, label: 'Dom' },
+];
+
 // Mensajes motivacionales durante la carga
 const LOADING_MESSAGES = [
   'Analizando tu perfil...',
@@ -111,6 +143,16 @@ function CreatePlanContent() {
   const [split, setSplit] = useState('push_pull_legs');
   const [timePerSession, setTimePerSession] = useState(60);
 
+  // Modo de creación y campos propios del plan armado a mano
+  const [mode, setMode] = useState<'ai' | 'manual'>('ai');
+  const [planName, setPlanName] = useState('Mi rutina');
+  const [trainingDays, setTrainingDays] = useState<number[]>([1, 3, 5]);
+  const [isCreatingManual, setIsCreatingManual] = useState(false);
+
+  // Favoritos: si el usuario tiene, la IA los prioriza por defecto
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [prioritizeFavorites, setPrioritizeFavorites] = useState(true);
+
   // Estado de la generación
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -128,14 +170,27 @@ function CreatePlanContent() {
         const res = await fetch('/api/plans');
         if (!res.ok) return;
         const data = await res.json();
-        const active = (data.plans || []).find(
-          (p: { status: string }) => p.status === 'ACTIVE'
-        );
+        const active = (data.plans || []).find((p: { status: string }) => p.status === 'ACTIVE');
         if (!cancelled) setActivePlanName(active?.name ?? null);
       } catch {
         // Sin el aviso no se rompe nada — generar sigue funcionando igual.
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/exercises?favorites=true&limit=1')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setFavoritesCount(data.total || 0);
+      })
+      .catch(() => {
+        // Sin el conteo simplemente no se ofrece la opción de favoritos.
+      });
     return () => {
       cancelled = true;
     };
@@ -152,9 +207,7 @@ function CreatePlanContent() {
         const res = await fetch('/api/plans');
         if (!res.ok) return;
         const data = await res.json();
-        const prev = (data.plans || []).find(
-          (p: { id: string }) => p.id === previousPlanId
-        );
+        const prev = (data.plans || []).find((p: { id: string }) => p.id === previousPlanId);
         if (!prev || cancelled) return;
 
         setGoal(prev.goal);
@@ -162,9 +215,7 @@ function CreatePlanContent() {
         setDaysPerWeek(prev.daysPerWeek);
         const splitsForDays = SPLITS[prev.daysPerWeek] || SPLITS[4];
         setSplit(
-          splitsForDays.some((s) => s.value === prev.split)
-            ? prev.split
-            : splitsForDays[0].value
+          splitsForDays.some((s) => s.value === prev.split) ? prev.split : splitsForDays[0].value,
         );
         setPrefilledFromPrevious(true);
       } catch {
@@ -210,6 +261,7 @@ function CreatePlanContent() {
           split,
           timePerSession,
           previousPlanId: previousPlanId || undefined,
+          prioritizeFavorites: favoritesCount > 0 && prioritizeFavorites,
         }),
       });
 
@@ -241,7 +293,7 @@ function CreatePlanContent() {
           ? 'Se perdió la conexión mientras generábamos tu plan. Mantené la pantalla desbloqueada y la app abierta, y volvé a intentar con buena señal.'
           : err instanceof Error
             ? err.message
-            : 'Error inesperado'
+            : 'Error inesperado',
       );
     } finally {
       clearInterval(interval);
@@ -249,6 +301,46 @@ function CreatePlanContent() {
       setLoadingMessage('');
     }
   };
+
+  const toggleTrainingDay = (day: number) => {
+    setTrainingDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day],
+    );
+  };
+
+  const handleCreateManual = async () => {
+    setIsCreatingManual(true);
+    setError('');
+    try {
+      const response = await fetch('/api/plans/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: planName,
+          goal,
+          durationWeeks,
+          trainingDays,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Error al crear el plan');
+
+      // Directo al modo edición para empezar a agregar ejercicios
+      router.push(`/plan/${data.plan.id}?edit=1`);
+    } catch (err) {
+      setError(
+        err instanceof TypeError
+          ? 'Sin conexión. Revisá tu señal y volvé a intentar.'
+          : err instanceof Error
+            ? err.message
+            : 'Error inesperado',
+      );
+      setIsCreatingManual(false);
+    }
+  };
+
+  const isBusy = isGenerating || isCreatingManual;
+  const isManual = mode === 'manual';
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -266,12 +358,37 @@ function CreatePlanContent() {
       </header>
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Modo: con IA o a mano */}
+        <div className="grid grid-cols-2 gap-2" role="tablist" aria-label="Cómo crear el plan">
+          {(
+            [
+              { value: 'ai', label: 'Con IA', icon: Sparkles },
+              { value: 'manual', label: 'A mano', icon: PencilLine },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.value}
+              role="tab"
+              aria-selected={mode === m.value}
+              onClick={() => {
+                setMode(m.value);
+                setError('');
+              }}
+              disabled={isBusy}
+              className={`flex min-h-touch items-center justify-center gap-2 p-3 ${OPTION_BASE} ${mode === m.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+            >
+              <m.icon className="w-4 h-4" />
+              {m.label}
+            </button>
+          ))}
+        </div>
+
         {/* Aviso de plan activo — generar uno nuevo lo pausa */}
         {activePlanName && (
           <div className="rounded-md border border-border bg-secondary/50 p-4">
             <p className="text-sm text-foreground/80">
-              Ya tenés un plan activo (&quot;{activePlanName}&quot;). Generar uno nuevo lo va a
-              pausar — vas a poder retomarlo después desde Mis Planes.
+              Ya tenés un plan activo (&quot;{activePlanName}&quot;). Crear uno nuevo lo va a pausar
+              — vas a poder retomarlo después desde Mis Planes.
             </p>
           </div>
         )}
@@ -280,10 +397,31 @@ function CreatePlanContent() {
         {prefilledFromPrevious && (
           <div className="rounded-md border border-border bg-secondary/50 p-4">
             <p className="text-sm text-foreground/80">
-              Configuración basada en tu plan anterior. El nuevo plan también usa tu
-              progresión y feedback — ajustá lo que quieras y generá.
+              Configuración basada en tu plan anterior. El nuevo plan también usa tu progresión y
+              feedback — ajustá lo que quieras y generá.
             </p>
           </div>
+        )}
+
+        {/* Nombre (solo a mano — a los planes con IA los nombra la IA) */}
+        {isManual && (
+          <section>
+            <label
+              htmlFor="plan-name"
+              className="flex items-center gap-2 text-lg font-semibold mb-3"
+            >
+              <PencilLine className="w-5 h-5 text-accent-text" />
+              Nombre
+            </label>
+            <Input
+              id="plan-name"
+              value={planName}
+              onChange={(e) => setPlanName(e.target.value)}
+              maxLength={60}
+              disabled={isBusy}
+              placeholder="Mi rutina"
+            />
+          </section>
         )}
 
         {/* Objetivo */}
@@ -297,7 +435,7 @@ function CreatePlanContent() {
               <button
                 key={g.value}
                 onClick={() => setGoal(g.value)}
-                disabled={isGenerating}
+                disabled={isBusy}
                 className={`w-full text-left p-4 ${OPTION_BASE} ${goal === g.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 <span className="text-lg font-medium">{g.label}</span>
@@ -319,7 +457,7 @@ function CreatePlanContent() {
               <button
                 key={d.value}
                 onClick={() => setDurationWeeks(d.value)}
-                disabled={isGenerating}
+                disabled={isBusy}
                 className={`p-3 ${OPTION_BASE} ${durationWeeks === d.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
               >
                 {d.label}
@@ -328,97 +466,186 @@ function CreatePlanContent() {
           </div>
         </section>
 
-        {/* Días por semana */}
-        <section>
-          <label className="flex items-center gap-2 text-lg font-semibold mb-3">
-            <Dumbbell className="w-5 h-5 text-accent-text" />
-            Días por semana
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {DAYS_PER_WEEK.map((d) => (
-              <button
-                key={d.value}
-                onClick={() => handleDaysChange(d.value)}
-                disabled={isGenerating}
-                className={`p-3 ${OPTION_BASE} ${daysPerWeek === d.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Días de entrenamiento (a mano): qué días de la semana */}
+        {isManual && (
+          <section>
+            <label className="flex items-center gap-2 text-lg font-semibold mb-3">
+              <Dumbbell className="w-5 h-5 text-accent-text" />
+              Días de entrenamiento
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {WEEKDAYS.map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => toggleTrainingDay(d.value)}
+                  aria-pressed={trainingDays.includes(d.value)}
+                  disabled={isBusy}
+                  className={`min-h-touch p-3 ${OPTION_BASE} ${trainingDays.includes(d.value) ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {trainingDays.length === 0
+                ? 'Elegí al menos un día.'
+                : `${trainingDays.length} ${trainingDays.length === 1 ? 'día' : 'días'} por semana. El resto queda como descanso.`}
+            </p>
+          </section>
+        )}
 
-        {/* Split */}
-        <section>
-          <label className="flex items-center gap-2 text-lg font-semibold mb-3">
-            <Zap className="w-5 h-5 text-accent-text" />
-            Split
-          </label>
-          <div className="space-y-2">
-            {availableSplits.map((s) => (
-              <button
-                key={s.value}
-                onClick={() => setSplit(s.value)}
-                disabled={isGenerating}
-                className={`w-full text-left p-4 ${OPTION_BASE} ${split === s.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </section>
+        {!isManual && (
+          <>
+            {/* Días por semana */}
+            <section>
+              <label className="flex items-center gap-2 text-lg font-semibold mb-3">
+                <Dumbbell className="w-5 h-5 text-accent-text" />
+                Días por semana
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {DAYS_PER_WEEK.map((d) => (
+                  <button
+                    key={d.value}
+                    onClick={() => handleDaysChange(d.value)}
+                    disabled={isGenerating}
+                    className={`p-3 ${OPTION_BASE} ${daysPerWeek === d.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            </section>
 
-        {/* Tiempo por sesión */}
-        <section>
-          <label className="flex items-center gap-2 text-lg font-semibold mb-3">
-            <Clock className="w-5 h-5 text-accent-text" />
-            Tiempo por sesión
-          </label>
-          <div className="grid grid-cols-4 gap-2">
-            {TIME_OPTIONS.map((t) => (
-              <button
-                key={t.value}
-                onClick={() => setTimePerSession(t.value)}
-                disabled={isGenerating}
-                className={`p-3 ${OPTION_BASE} ${timePerSession === t.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </section>
+            {/* Split */}
+            <section>
+              <label className="flex items-center gap-2 text-lg font-semibold mb-3">
+                <Zap className="w-5 h-5 text-accent-text" />
+                Split
+              </label>
+              <div className="space-y-2">
+                {availableSplits.map((s) => (
+                  <button
+                    key={s.value}
+                    onClick={() => setSplit(s.value)}
+                    disabled={isGenerating}
+                    className={`w-full text-left p-4 ${OPTION_BASE} ${split === s.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Tiempo por sesión */}
+            <section>
+              <label className="flex items-center gap-2 text-lg font-semibold mb-3">
+                <Clock className="w-5 h-5 text-accent-text" />
+                Tiempo por sesión
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_OPTIONS.map((t) => (
+                  <button
+                    key={t.value}
+                    onClick={() => setTimePerSession(t.value)}
+                    disabled={isGenerating}
+                    className={`p-3 ${OPTION_BASE} ${timePerSession === t.value ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* Favoritos — solo si el usuario tiene alguno marcado */}
+            {favoritesCount > 0 && (
+              <section>
+                <button
+                  role="switch"
+                  aria-checked={prioritizeFavorites}
+                  onClick={() => setPrioritizeFavorites((v) => !v)}
+                  disabled={isGenerating}
+                  className={`flex w-full items-center gap-3 p-4 text-left ${OPTION_BASE} ${prioritizeFavorites ? OPTION_SELECTED : OPTION_UNSELECTED}`}
+                >
+                  <Heart
+                    className={`w-5 h-5 flex-shrink-0 ${prioritizeFavorites ? 'fill-current' : ''}`}
+                  />
+                  <span className="flex-1">
+                    <span className="block text-lg font-medium">Usar mis favoritos</span>
+                    <span className="block text-sm text-muted-foreground mt-0.5">
+                      {prioritizeFavorites
+                        ? `El plan se arma alrededor de tus ${favoritesCount} ejercicios favoritos`
+                        : 'La IA elige libremente entre todo el catálogo'}
+                    </span>
+                  </span>
+                </button>
+              </section>
+            )}
+          </>
+        )}
 
         {/* Error */}
         {error && (
           <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4">
             <p className="font-medium text-destructive">{error}</p>
-            <button onClick={handleGenerate} className="mt-2 text-sm text-destructive underline">
+            <button
+              onClick={isManual ? handleCreateManual : handleGenerate}
+              className="mt-2 text-sm text-destructive underline"
+            >
               Reintentar
             </button>
           </div>
         )}
 
-        {/* Botón generar */}
-        <Button onClick={handleGenerate} disabled={isGenerating} size="lg" className="w-full">
-          {isGenerating ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin" />
-              {loadingMessage}
-            </>
-          ) : (
-            <>
-              <Sparkles className="w-5 h-5" />
-              Generar Plan con IA
-            </>
-          )}
-        </Button>
+        {/* Botón crear a mano */}
+        {isManual && (
+          <>
+            <Button
+              onClick={handleCreateManual}
+              disabled={isCreatingManual || trainingDays.length === 0 || !planName.trim()}
+              size="lg"
+              className="w-full"
+            >
+              {isCreatingManual ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <PencilLine className="w-5 h-5" />
+                  Crear y agregar ejercicios
+                </>
+              )}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              En el paso siguiente agregás los ejercicios de cada día.
+              {favoritesCount > 0 && ' Tus favoritos aparecen primero.'}
+            </p>
+          </>
+        )}
 
-        {/* Nota informativa */}
-        <p className="text-center text-sm text-muted-foreground">
-          La IA seleccionará ejercicios óptimos para tu objetivo y nivel.
-          <br />
-          Podrás ajustar el plan después de generarlo.
-        </p>
+        {/* Botón generar */}
+        {!isManual && (
+          <>
+            <Button onClick={handleGenerate} disabled={isGenerating} size="lg" className="w-full">
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  {loadingMessage}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generar Plan con IA
+                </>
+              )}
+            </Button>
+
+            {/* Nota informativa */}
+            <p className="text-center text-sm text-muted-foreground">
+              La IA seleccionará ejercicios óptimos para tu objetivo y nivel.
+              <br />
+              Podrás ajustar el plan después de generarlo.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
