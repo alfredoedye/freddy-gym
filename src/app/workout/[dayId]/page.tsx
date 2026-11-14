@@ -53,6 +53,12 @@ export default async function WorkoutPage({ params }: WorkoutPageProps) {
     redirect('/');
   }
 
+  // Día sin ejercicios (plan armado a mano que todavía no se completó):
+  // mandar a agregarlos en vez de abrir un entrenamiento vacío.
+  if (planDay.exercises.length === 0) {
+    redirect(`/plan/${planDay.plan.id}?edit=1`);
+  }
+
   // Semana actual del plan, calculada desde su fecha de inicio (acotada a
   // [1, durationWeeks]). Antes venía de ?week=, que ningún caller pasaba —
   // toda sesión quedaba en "semana 1" y el prefill de pesos nunca encontraba

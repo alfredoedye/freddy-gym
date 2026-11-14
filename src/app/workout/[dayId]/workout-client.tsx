@@ -158,7 +158,11 @@ export function WorkoutClient({
       <ExerciseCard
         exercise={currentExercise.exercise}
         phase={currentExercise.phase}
-        setsInfo={`${currentExercise.sets} × ${currentExercise.repsMin}-${currentExercise.repsMax}`}
+        setsInfo={`${currentExercise.sets} × ${
+          currentExercise.repsMin === currentExercise.repsMax
+            ? currentExercise.repsMin
+            : `${currentExercise.repsMin}-${currentExercise.repsMax}`
+        }`}
         notes={currentExercise.notes}
       />
 

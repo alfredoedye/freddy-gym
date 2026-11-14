@@ -13,6 +13,7 @@ import {
   buildPlanRequest,
   buildProgressionContext,
   buildPersonalRecordsContext,
+  buildFavoritesContext,
   buildExercisePool,
 } from './prompts';
 import {
@@ -31,6 +32,7 @@ export interface GeneratePlanInput {
   split: string;
   timePerSession?: number;
   previousPlanId?: string;
+  prioritizeFavorites?: boolean;
 }
 
 interface GeneratePlanResult {
@@ -93,6 +95,8 @@ const GYM_EQUIPMENT = [
   'stationary bike',
   'elliptical machine',
   'stepmill machine',
+  'sled machine', // prensa de piernas, hack squat
+  'wheel roller', // rueda abdominal
 ];
 
 // === FUNCIÓN PRINCIPAL ===
@@ -158,6 +162,18 @@ export async function generateTrainingPlan(
 
     const progressionSection = progressionParts.join('\n\n');
 
+    // 3b. Favoritos del usuario (opt-in desde el formulario). Solo los que
+    //     están en el pool — un favorito fuera del pool sería un ID inválido.
+    let favoritesSection = '';
+    if (input.prioritizeFavorites) {
+      const favorites = await prisma.favoriteExercise.findMany({
+        where: { userId: input.userId },
+        select: { exerciseId: true },
+      });
+      const favoriteIds = new Set(favorites.map((f) => f.exerciseId));
+      favoritesSection = buildFavoritesContext(exercises.filter((e) => favoriteIds.has(e.id)));
+    }
+
     // 4. Construir el prompt completo
     const userContext = buildUserContext({ profile: user.profile, name: user.name || undefined });
     const planRequest = buildPlanRequest({
@@ -175,6 +191,8 @@ export async function generateTrainingPlan(
       planRequest,
       '',
       progressionSection,
+      '',
+      favoritesSection,
       '',
       exercisePool,
       '',

@@ -35,6 +35,7 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
   const [search, setSearch] = useState('');
   const [exercises, setExercises] = useState<PickerExercise[]>([]);
   const [loading, setLoading] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const visibleExercises = exercises.filter((ex) => !excludeIds.includes(ex.id));
 
   useEffect(() => {
@@ -44,7 +45,9 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
     const timeout = setTimeout(() => {
       // favoritesFirst: los favoritos del usuario encabezan la lista — son
       // los candidatos más probables al armar o modificar un plan.
-      fetch(`/api/exercises?search=${encodeURIComponent(search)}&limit=20&favoritesFirst=true`)
+      fetch(
+        `/api/exercises?search=${encodeURIComponent(search)}&limit=${favoritesOnly ? 50 : 20}&favoritesFirst=true${favoritesOnly ? '&favorites=true' : ''}`
+      )
         .then((res) => res.json())
         .then((data) => setExercises(data.exercises || []))
         .catch(() => setExercises([]))
@@ -52,7 +55,7 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [open, search]);
+  }, [open, search, favoritesOnly]);
 
   useEffect(() => {
     if (!open) setSearch('');
@@ -76,6 +79,20 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
           />
         </div>
 
+        <button
+          type="button"
+          onClick={() => setFavoritesOnly((v) => !v)}
+          aria-pressed={favoritesOnly}
+          className={`flex min-h-touch items-center gap-2 self-start rounded-full px-4 text-sm font-medium transition-colors duration-150 ${
+            favoritesOnly
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-muted-foreground'
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${favoritesOnly ? 'fill-current' : ''}`} />
+          Solo mis favoritos
+        </button>
+
         <div className="flex-1 overflow-y-auto space-y-1.5">
           {loading && (
             <div className="flex justify-center py-8">
@@ -85,7 +102,9 @@ export function ExercisePickerDialog({ open, onOpenChange, onSelect, excludeIds 
 
           {!loading && visibleExercises.length === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              No se encontraron ejercicios
+              {favoritesOnly
+                ? 'No tenés favoritos que coincidan. Marcalos con el corazón en Ejercicios.'
+                : 'No se encontraron ejercicios'}
             </p>
           )}
 

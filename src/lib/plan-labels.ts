@@ -15,6 +15,7 @@ export const splitLabels: Record<string, string> = {
   upper_lower: 'Upper / Lower',
   full_body: 'Full Body',
   bro_split: 'Bro Split',
+  custom: 'Personalizado',
 };
 
 export const statusLabels: Record<string, string> = {
